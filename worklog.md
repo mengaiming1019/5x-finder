@@ -25,3 +25,26 @@ Stage Summary:
 - Seed script (using upsert) is fully compatible with PostgreSQL
 - Local sandbox cannot run PostgreSQL (no system package access), but code is verified correct for Vercel
 - Deployment guide (VERCEL_DEPLOY.md) provides complete instructions for first-time deployment
+
+---
+Task ID: 14
+Agent: Vercel Prep Agent
+Task: Prepare project for Vercel deployment (dual-environment support)
+
+Work Log:
+- Read existing files: prisma/schema.prisma (sqlite), analyze/route.ts, news/route.ts, next.config.ts, worklog.md
+- Created prisma/schema.vercel.prisma: copied all models from schema.prisma, changed provider to "postgresql", added @@map("stocks") to Stock model, added @@map("factor_weights") to FactorWeight model
+- Left original prisma/schema.prisma UNCHANGED (still sqlite) for sandbox compatibility
+- Updated src/app/api/stocks/[ticker]/analyze/route.ts: replaced static import of z-ai-web-dev-sdk with dynamic import (try/catch), added OpenAI API fallback using fetch to https://api.openai.com/v1/chat/completions with model "gpt-4o-mini", reads OPENAI_API_KEY env var
+- Updated src/app/api/stocks/[ticker]/news/route.ts: replaced static import of z-ai-web-dev-sdk with dynamic import (try/catch), added fallback that returns a helpful placeholder news item directing users to configure a search API key on Vercel
+- Created next.config.vercel.ts: same as next.config.ts but without `output: "standalone"` (Vercel handles output automatically)
+- Created .env.vercel.example: includes DATABASE_URL template for Vercel Postgres (Neon) and OPENAI_API_KEY template
+- Ran `bun run lint` — passed with no errors
+- Verified original prisma/schema.prisma still has provider = "sqlite" (unchanged)
+
+Stage Summary:
+- Dual-environment support: sandbox uses z-ai-web-dev-sdk + sqlite, Vercel uses OpenAI + postgresql
+- Dynamic imports for z-ai-web-dev-sdk prevent build-time crashes on Vercel where the package doesn't exist
+- Vercel-specific Prisma schema with postgresql provider and @@map directives for proper table naming
+- Vercel-specific Next.js config without standalone output
+- Original sandbox files remain fully functional and unchanged

@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import ZAI from 'z-ai-web-dev-sdk';
 
 export async function POST(
   _request: Request,
@@ -16,17 +15,9 @@ export async function POST(
       return NextResponse.json({ error: 'Stock not found' }, { status: 404 });
     }
 
-    const zai = await ZAI.create();
+    const systemPrompt = `You are a world-class Fintech industry analyst with 20+ years of experience. You specialize in identifying high-growth Fintech stocks that can achieve 5x returns within 2 years. Your analysis combines deep industry knowledge, competitive analysis, financial modeling, and qualitative assessment of execution, culture, and business model strength. Provide specific, actionable insights.`;
 
-    const completion = await zai.chat.completions.create({
-      messages: [
-        {
-          role: 'assistant',
-          content: `You are a world-class Fintech industry analyst with 20+ years of experience. You specialize in identifying high-growth Fintech stocks that can achieve 5x returns within 2 years. Your analysis combines deep industry knowledge, competitive analysis, financial modeling, and qualitative assessment of execution, culture, and business model strength. Provide specific, actionable insights.`,
-        },
-        {
-          role: 'user',
-          content: `Analyze ${stock.name} (${stock.ticker}) as a potential 5x investment opportunity within 2 years.
+    const userPrompt = `Analyze ${stock.name} (${stock.ticker}) as a potential 5x investment opportunity within 2 years.
 
 Company Profile:
 - Sector: ${stock.sector} / ${stock.subSector}
@@ -62,13 +53,73 @@ Please provide a structured analysis covering:
 9. **Industry Context**: How does this company fit into the broader Fintech landscape?
 10. **Verdict**: Your overall assessment with a confidence level (High/Medium/Low)
 
-Keep the analysis concise but insightful. Focus on actionable intelligence.`,
-        },
-      ],
-      thinking: { type: 'disabled' },
-    });
+Keep the analysis concise but insightful. Focus on actionable intelligence.`;
 
-    const aiAnalysis = completion.choices[0]?.message?.content || 'Analysis unavailable';
+    let aiAnalysis: string | null = null;
+
+    // Try sandbox SDK first (z-ai-web-dev-sdk)
+    let ZAI: any;
+    try {
+      ZAI = (await import('z-ai-web-dev-sdk')).default;
+    } catch {
+      ZAI = null;
+    }
+
+    if (ZAI) {
+      try {
+        const zai = await ZAI.create();
+        const completion = await zai.chat.completions.create({
+          messages: [
+            { role: 'assistant', content: systemPrompt },
+            { role: 'user', content: userPrompt },
+          ],
+          thinking: { type: 'disabled' },
+        });
+        aiAnalysis = completion.choices[0]?.message?.content || null;
+      } catch (sdkError) {
+        console.warn('z-ai-web-dev-sdk failed, falling back to OpenAI:', sdkError);
+      }
+    }
+
+    // Fallback to OpenAI API (Vercel environment)
+    if (!aiAnalysis) {
+      const openaiKey = process.env.OPENAI_API_KEY;
+      if (!openaiKey) {
+        return NextResponse.json(
+          { error: 'AI analysis unavailable: OPENAI_API_KEY not configured' },
+          { status: 503 }
+        );
+      }
+
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${openaiKey}`,
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt },
+          ],
+          temperature: 0.7,
+          max_tokens: 2048,
+        }),
+      });
+
+      if (!response.ok) {
+        const errBody = await response.text();
+        console.error('OpenAI API error:', response.status, errBody);
+        return NextResponse.json(
+          { error: 'Failed to get AI analysis from OpenAI' },
+          { status: 502 }
+        );
+      }
+
+      const data = await response.json();
+      aiAnalysis = data.choices?.[0]?.message?.content || 'Analysis unavailable';
+    }
 
     await db.stock.update({
       where: { ticker: ticker.toUpperCase() },
