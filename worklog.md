@@ -205,3 +205,28 @@ Stage Summary:
 - Fixed Weights dialog clipping issue by replacing ScrollArea with overflow-y-auto
 - All 10 factor weight sliders now fully visible and interactive
 - Monetization Model slider at 5% is accessible and adjustable
+
+---
+Task ID: 8
+Agent: Main Agent
+Task: Add scroll feature to stock detail dialog (Radar, Breakdown, AI Analysis, News)
+
+Work Log:
+- Identified root cause: Stock detail dialog used ScrollArea component with flex-1, which clipped content below the visible area
+- Same issue as the Weights dialog — ScrollArea doesn't scroll properly inside flex containers
+- Replaced ScrollArea with overflow-y-auto div for native scrolling
+- Added shrink-0 to DialogHeader so it stays fixed while content scrolls below
+- Removed unused ScrollArea import from the file
+- Verified scrolling works on all 4 tabs:
+  - Radar: chart visible and scrollable
+  - Breakdown: all 10 factors + Composite 5X Score visible with scrolling
+  - AI Analysis: full 10-section analysis scrollable including Verdict at the bottom
+  - News: articles list scrollable
+- Verified scrolling works on both mobile (375x812) and desktop (1280x800)
+- No page errors, lint passes
+
+Stage Summary:
+- Stock detail dialog now fully scrollable on all tabs
+- Replaced ScrollArea with overflow-y-auto for reliable native scrolling
+- Dialog header (stock name, score, buttons) stays fixed while tab content scrolls
+- All content accessible via scrolling on mobile and desktop

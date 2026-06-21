@@ -17,7 +17,6 @@ import { Progress } from '@/components/ui/progress';
 import { Slider } from '@/components/ui/slider';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -417,7 +416,7 @@ export default function StockPickerPage() {
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col p-0">
           {selectedStock && (<>
-            <DialogHeader className="px-6 pt-6 pb-2">
+            <DialogHeader className="px-6 pt-6 pb-2 shrink-0">
               <DialogDescription className="sr-only">{selectedStock.name} detailed analysis and factor scores</DialogDescription>
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-3">
@@ -430,7 +429,7 @@ export default function StockPickerPage() {
                 </div>
               </div>
             </DialogHeader>
-            <ScrollArea className="flex-1 px-6"><div className="space-y-4 pb-6">
+            <div className="flex-1 overflow-y-auto px-6"><div className="space-y-4 pb-6">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="text-center p-2 rounded-lg bg-muted/50"><p className="text-[11px] text-muted-foreground">Sector</p><p className="text-sm font-medium">{selectedStock.sector}</p></div>
                 <div className="text-center p-2 rounded-lg bg-muted/50"><p className="text-[11px] text-muted-foreground">Market Cap</p><p className="text-sm font-mono font-medium">{selectedStock.marketCap}</p></div>
@@ -450,7 +449,7 @@ export default function StockPickerPage() {
                 <TabsContent value="analysis" className="mt-3">{selectedStock.aiAnalysis ? (<div className="prose prose-sm max-w-none"><ReactMarkdown>{selectedStock.aiAnalysis}</ReactMarkdown></div>) : (<div className="flex flex-col items-center justify-center py-12 text-center"><Brain className="w-10 h-10 text-muted-foreground mb-3" /><p className="text-sm text-muted-foreground mb-3">No AI analysis yet. Run the analysis to get a detailed 5X thesis.</p><Button onClick={() => handleAnalyze(selectedStock.ticker)} disabled={analyzeLoading}>{analyzeLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}Run AI Analysis</Button></div>)}</TabsContent>
                 <TabsContent value="news" className="mt-3">{getNewsItems(selectedStock).length > 0 ? (<div className="space-y-3">{getNewsItems(selectedStock).map((item, i) => (<div key={i} className="p-3 rounded-lg bg-muted/30 space-y-1"><a href={item.url} target="_blank" rel="noopener noreferrer" className="text-sm font-medium hover:underline flex items-center gap-1">{item.title}<Zap className="w-3 h-3 shrink-0" /></a><p className="text-xs text-muted-foreground line-clamp-2">{item.snippet}</p><div className="flex items-center gap-2 text-[11px] text-muted-foreground"><span>{item.source}</span><span>·</span><span>{item.date ? new Date(item.date).toLocaleDateString() : 'N/A'}</span></div></div>))}</div>) : (<div className="flex flex-col items-center justify-center py-12 text-center"><Globe className="w-10 h-10 text-muted-foreground mb-3" /><p className="text-sm text-muted-foreground mb-3">No news yet for {selectedStock.ticker}.</p><Button variant="outline" onClick={() => handleFetchNews(selectedStock.ticker)} disabled={newsLoading}>{newsLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Globe className="w-4 h-4 mr-2" />}Fetch News</Button></div>)}</TabsContent>
               </Tabs>
-            </div></ScrollArea>
+            </div></div>
           </>)}
         </DialogContent>
       </Dialog>
