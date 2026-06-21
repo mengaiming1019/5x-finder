@@ -22,7 +22,7 @@ export async function POST(
       messages: [
         {
           role: 'assistant',
-          content: `You are a world-class Fintech industry analyst with 20+ years of experience. You specialize in identifying high-growth Fintech stocks that can achieve 5x returns within 2 years. Your analysis combines deep industry knowledge, competitive analysis, and financial modeling. Provide specific, actionable insights.`,
+          content: `You are a world-class Fintech industry analyst with 20+ years of experience. You specialize in identifying high-growth Fintech stocks that can achieve 5x returns within 2 years. Your analysis combines deep industry knowledge, competitive analysis, financial modeling, and qualitative assessment of execution, culture, and business model strength. Provide specific, actionable insights.`,
         },
         {
           role: 'user',
@@ -34,23 +34,36 @@ Company Profile:
 - Current Price: ${stock.price}
 - Description: ${stock.description}
 
-Current Factor Scores (0-100):
+Quantitative Factor Scores (0-100):
 - Revenue Growth: ${stock.revenueGrowth}/100
 - Market Opportunity: ${stock.marketOpportunity}/100
 - Competitive Moat: ${stock.competitiveMoat}/100
 - Profitability Path: ${stock.profitabilityPath}/100
 - Valuation: ${stock.valuation}/100
 - Industry Knowledge: ${stock.industryKnowledge}/100
-- Composite 5X Score: ${stock.fiveXScore}/100
+
+Qualitative Factor Scores (0-100):
+- Execution Capabilities: ${stock.executionCapabilities}/100
+- Innovation Culture: ${stock.innovationCulture}/100
+- Funding Strength: ${stock.fundingStrength}/100
+- Customer Base Stickiness: ${stock.customerStickiness}/100
+- Business & Monetization Model: ${stock.monetizationModel}/100
+
+Composite 5X Score: ${stock.fiveXScore}/100
 
 Please provide a structured analysis covering:
 1. **5X Thesis**: What is the specific path to a 5x return? What needs to go right?
 2. **Key Catalysts**: What are the 2-3 most important catalysts that could drive 5x growth?
 3. **Risk Factors**: What are the key risks that could prevent 5x returns?
-4. **Industry Context**: How does this company fit into the broader Fintech landscape?
-5. **Verdict**: Your overall assessment with a confidence level (High/Medium/Low)
+4. **Execution Assessment**: Can this management team deliver? Evaluate their track record, strategic clarity, and operational discipline.
+5. **Innovation & Culture**: Does the company foster the innovation needed to sustain hypergrowth? Are they building for the future or resting on past success?
+6. **Funding & Capital Strategy**: Does the company have the financial resources and capital allocation skills to fund growth through to profitability?
+7. **Customer Moat & Stickiness**: How deep is the customer relationship? Is this a transactional or ecosystem play? What's the switching cost?
+8. **Business Model Quality**: How scalable and defensible is the monetization model? Are unit economics improving?
+9. **Industry Context**: How does this company fit into the broader Fintech landscape?
+10. **Verdict**: Your overall assessment with a confidence level (High/Medium/Low)
 
-Keep the analysis concise but insightful. Focus on actionable intelligence.`,
+Keep the analysis concise but insightful. Focus on actionable intelligence that only a seasoned Fintech analyst would provide.`,
         },
       ],
       thinking: { type: 'disabled' },

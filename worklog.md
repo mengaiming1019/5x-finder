@@ -22,3 +22,29 @@ Stage Summary:
 - Adjustable factor weights with automatic score recalculation
 - All features verified working via Agent Browser
 - No lint errors, no console errors
+
+---
+Task ID: 2
+Agent: Main Agent
+Task: Add 5 qualitative factors to the stock picking model
+
+Work Log:
+- Added 5 new qualitative factor scores to Stock model: executionCapabilities, innovationCulture, fundingStrength, customerStickiness, monetizationModel
+- Added 5 new weight fields to FactorWeight model with defaults (10%, 8%, 8%, 8%, 6%)
+- Rescaled all weights: Quantitative (12%, 12%, 10%, 10%, 8%, 8%) + Qualitative (10%, 8%, 8%, 8%, 6%) = 100%
+- Updated seed data with curated scores for all 16 stocks across 5 new factors
+- Updated /api/weights PUT endpoint to include all 11 factor weights in recalculation
+- Updated /api/stocks/[ticker]/analyze to include qualitative factors in AI prompt with 10 structured analysis sections (5X Thesis, Key Catalysts, Risk Factors, Execution Assessment, Innovation & Culture, Funding & Capital Strategy, Customer Moat & Stickiness, Business Model Quality, Industry Context, Verdict)
+- Updated frontend page.tsx with: QUANT_FACTORS and QUAL_FACTORS split config, separate Quantitative/Qualitative average score cards, updated radar chart with 11 axes, Breakdown tab with QUANTITATIVE/QUALITATIVE sections, Weights dialog with two grouped sections, new icons (Rocket, Lightbulb, Wallet, Users, Layers), updated Top Picks cards showing qual factors, updated methodology section
+- Force-reset DB, re-seeded, regenerated Prisma client
+- Verified API returns all 11 factor weights correctly
+- Verified HTML page renders correctly with title "5X Finder — AI-Powered Fintech Stock Picking Model"
+- Lint passes with no errors
+
+Stage Summary:
+- 11-factor scoring model: 6 quantitative + 5 qualitative
+- New qualitative factors: Execution Capabilities, Innovation Culture, Funding Strength, Customer Stickiness, Monetization Model
+- AI analysis now covers all 11 factors with 10 structured sections including qualitative assessments
+- All weights adjustable with auto-recalculation
+- Frontend fully updated with split Quantitative/Qualitative sections
+- Top rankings: NU (81), MELI (81), ADYEY (78), SHOP (75), PLTR (74)

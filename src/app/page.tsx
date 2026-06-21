@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   TrendingUp, Search, Brain, BarChart3, Target, ShieldCheck,
   DollarSign, Eye, Sparkles, Globe, ChevronUp, ChevronDown,
-  Settings2, X, ArrowUpRight, ArrowDownRight, Loader2, Star,
-  AlertTriangle, CheckCircle2, Flame, Zap, RefreshCw,
+  Settings2, Loader2, Star, CheckCircle2, Flame, Zap, RefreshCw,
+  Rocket, Lightbulb, Wallet, Users, Layers,
 } from 'lucide-react';
 import {
   Card, CardContent, CardDescription, CardHeader, CardTitle,
@@ -41,12 +41,20 @@ interface Stock {
   price: string;
   description: string;
   website: string | null;
+  // Quantitative
   revenueGrowth: number;
   marketOpportunity: number;
   competitiveMoat: number;
   profitabilityPath: number;
   valuation: number;
   industryKnowledge: number;
+  // Qualitative
+  executionCapabilities: number;
+  innovationCulture: number;
+  fundingStrength: number;
+  customerStickiness: number;
+  monetizationModel: number;
+  // Composite
   fiveXScore: number;
   aiAnalysis: string | null;
   lastAnalyzed: string | null;
@@ -61,6 +69,11 @@ interface FactorWeights {
   profitabilityPath: number;
   valuation: number;
   industryKnowledge: number;
+  executionCapabilities: number;
+  innovationCulture: number;
+  fundingStrength: number;
+  customerStickiness: number;
+  monetizationModel: number;
 }
 
 interface NewsItem {
@@ -71,12 +84,17 @@ interface NewsItem {
   source: string;
 }
 
-type SortField = 'fiveXScore' | 'revenueGrowth' | 'marketOpportunity' | 'competitiveMoat' | 'profitabilityPath' | 'valuation' | 'industryKnowledge' | 'name' | 'ticker';
+type SortField = keyof Pick<Stock,
+  'fiveXScore' | 'revenueGrowth' | 'marketOpportunity' | 'competitiveMoat' |
+  'profitabilityPath' | 'valuation' | 'industryKnowledge' |
+  'executionCapabilities' | 'innovationCulture' | 'fundingStrength' |
+  'customerStickiness' | 'monetizationModel' | 'name' | 'ticker'
+>;
 type SortDir = 'asc' | 'desc';
 
 // ─── Factor Config ───────────────────────────────────────────────────────────
 
-const FACTOR_CONFIG = [
+const QUANT_FACTORS = [
   { key: 'revenueGrowth' as const, label: 'Revenue Growth', icon: TrendingUp, color: '#10b981', desc: 'Revenue growth momentum & trajectory' },
   { key: 'marketOpportunity' as const, label: 'Market Opportunity', icon: Globe, color: '#3b82f6', desc: 'TAM/SAM size & penetration potential' },
   { key: 'competitiveMoat' as const, label: 'Competitive Moat', icon: ShieldCheck, color: '#8b5cf6', desc: 'Durability of competitive advantage' },
@@ -84,6 +102,16 @@ const FACTOR_CONFIG = [
   { key: 'valuation' as const, label: 'Valuation', icon: Target, color: '#ef4444', desc: 'Entry point attractiveness' },
   { key: 'industryKnowledge' as const, label: 'Industry Knowledge', icon: Brain, color: '#06b6d4', desc: 'Fintech domain expertise overlay' },
 ];
+
+const QUAL_FACTORS = [
+  { key: 'executionCapabilities' as const, label: 'Execution Capabilities', icon: Rocket, color: '#e11d48', desc: 'Can the leadership team deliver on their vision? Track record, strategic clarity, and operational discipline' },
+  { key: 'innovationCulture' as const, label: 'Innovation Culture', icon: Lightbulb, color: '#7c3aed', desc: 'Does the company foster the innovation needed for hypergrowth? R&D velocity, talent density, product iteration speed' },
+  { key: 'fundingStrength' as const, label: 'Funding Strength', icon: Wallet, color: '#0ea5e9', desc: 'Financial resources & capital allocation skills. Cash runway, access to capital, and discipline in spending' },
+  { key: 'customerStickiness' as const, label: 'Customer Stickiness', icon: Users, color: '#059669', desc: 'Depth of customer relationship. Ecosystem lock-in, switching costs, NPS, and retention metrics' },
+  { key: 'monetizationModel' as const, label: 'Monetization Model', icon: Layers, color: '#d97706', desc: 'Scalability & defensibility of business model. Unit economics improvement, pricing power, and revenue diversification' },
+];
+
+const ALL_FACTORS = [...QUANT_FACTORS, ...QUAL_FACTORS];
 
 const SECTOR_COLORS: Record<string, string> = {
   'Payments': '#3b82f6',
@@ -96,6 +124,20 @@ const SECTOR_COLORS: Record<string, string> = {
   'Enterprise AI': '#f97316',
   'Automation': '#14b8a6',
   'Commerce & Fintech': '#6366f1',
+};
+
+const DEFAULT_WEIGHTS_LOCAL = {
+  revenueGrowth: 12,
+  marketOpportunity: 12,
+  competitiveMoat: 10,
+  profitabilityPath: 10,
+  valuation: 8,
+  industryKnowledge: 8,
+  executionCapabilities: 10,
+  innovationCulture: 8,
+  fundingStrength: 8,
+  customerStickiness: 8,
+  monetizationModel: 6,
 };
 
 // ─── Helper Functions ─────────────────────────────────────────────────────────
@@ -120,10 +162,6 @@ function getScoreBadgeVariant(score: number): 'default' | 'secondary' | 'destruc
   return 'destructive';
 }
 
-function formatMarketCap(mc: string): string {
-  return mc;
-}
-
 // ─── Main Page Component ──────────────────────────────────────────────────────
 
 export default function StockPickerPage() {
@@ -139,14 +177,7 @@ export default function StockPickerPage() {
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [searchQuery, setSearchQuery] = useState('');
   const [sectorFilter, setSectorFilter] = useState<string>('all');
-  const [localWeights, setLocalWeights] = useState({
-    revenueGrowth: 20,
-    marketOpportunity: 20,
-    competitiveMoat: 20,
-    profitabilityPath: 15,
-    valuation: 15,
-    industryKnowledge: 10,
-  });
+  const [localWeights, setLocalWeights] = useState({ ...DEFAULT_WEIGHTS_LOCAL });
 
   // Fetch data
   const fetchStocks = useCallback(async () => {
@@ -163,6 +194,11 @@ export default function StockPickerPage() {
           profitabilityPath: Math.round(data.weights.profitabilityPath * 100),
           valuation: Math.round(data.weights.valuation * 100),
           industryKnowledge: Math.round(data.weights.industryKnowledge * 100),
+          executionCapabilities: Math.round(data.weights.executionCapabilities * 100),
+          innovationCulture: Math.round(data.weights.innovationCulture * 100),
+          fundingStrength: Math.round(data.weights.fundingStrength * 100),
+          customerStickiness: Math.round(data.weights.customerStickiness * 100),
+          monetizationModel: Math.round(data.weights.monetizationModel * 100),
         });
       }
     } catch (err) {
@@ -247,6 +283,11 @@ export default function StockPickerPage() {
           profitabilityPath: localWeights.profitabilityPath / 100,
           valuation: localWeights.valuation / 100,
           industryKnowledge: localWeights.industryKnowledge / 100,
+          executionCapabilities: localWeights.executionCapabilities / 100,
+          innovationCulture: localWeights.innovationCulture / 100,
+          fundingStrength: localWeights.fundingStrength / 100,
+          customerStickiness: localWeights.customerStickiness / 100,
+          monetizationModel: localWeights.monetizationModel / 100,
         }),
       });
       const data = await res.json();
@@ -308,16 +349,22 @@ export default function StockPickerPage() {
   }));
 
   // Radar chart data for selected stock
-  const getRadarData = (stock: Stock) => FACTOR_CONFIG.map(f => ({
-    factor: f.label,
+  const getRadarData = (stock: Stock) => ALL_FACTORS.map(f => ({
+    factor: f.label.length > 14 ? f.label.slice(0, 12) + '…' : f.label,
     value: stock[f.key],
     fullMark: 100,
   }));
 
   // Average scores
-  const avgScores = FACTOR_CONFIG.map(f => ({
+  const quantAvg = QUANT_FACTORS.map(f => ({
     factor: f.label,
     value: Math.round(stocks.reduce((sum, s) => sum + s[f.key], 0) / stocks.length),
+    color: f.color,
+  }));
+  const qualAvg = QUAL_FACTORS.map(f => ({
+    factor: f.label,
+    value: Math.round(stocks.reduce((sum, s) => sum + s[f.key], 0) / stocks.length),
+    color: f.color,
   }));
 
   // Top 10 bar chart data
@@ -432,9 +479,7 @@ export default function StockPickerPage() {
                     <div className="flex items-start justify-between mb-2">
                       <div>
                         <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="font-mono text-xs">
-                            #{i + 1}
-                          </Badge>
+                          <Badge variant="outline" className="font-mono text-xs">#{i + 1}</Badge>
                           <span className="font-mono font-bold text-sm">{stock.ticker}</span>
                         </div>
                         <p className="text-sm font-medium mt-1">{stock.name}</p>
@@ -450,8 +495,20 @@ export default function StockPickerPage() {
                       <span>·</span>
                       <span>{stock.price}</span>
                     </div>
+                    {/* Top quant factors */}
                     <div className="space-y-1.5">
-                      {FACTOR_CONFIG.slice(0, 3).map(f => (
+                      {QUANT_FACTORS.slice(0, 3).map(f => (
+                        <div key={f.key} className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground w-28 shrink-0">{f.label}</span>
+                          <Progress value={stock[f.key]} className="h-1.5 flex-1" />
+                          <span className="text-xs font-mono w-6 text-right">{stock[f.key]}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <Separator className="my-2" />
+                    {/* Top qual factors */}
+                    <div className="space-y-1.5">
+                      {QUAL_FACTORS.slice(0, 2).map(f => (
                         <div key={f.key} className="flex items-center gap-2">
                           <span className="text-xs text-muted-foreground w-28 shrink-0">{f.label}</span>
                           <Progress value={stock[f.key]} className="h-1.5 flex-1" />
@@ -501,7 +558,7 @@ export default function StockPickerPage() {
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <PieChart className="w-4 h-4 text-muted-foreground" />
+                  <Eye className="w-4 h-4 text-muted-foreground" />
                   Sector Distribution
                 </CardTitle>
               </CardHeader>
@@ -544,33 +601,65 @@ export default function StockPickerPage() {
         </section>
 
         {/* ── Average Factor Scores ──────────────────────────────────────── */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <Eye className="w-4 h-4 text-muted-foreground" />
-              Universe Average Factor Scores
-            </CardTitle>
-            <CardDescription className="text-xs">
-              Average scores across all {stocks.length} Fintech stocks in the universe
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-              {FACTOR_CONFIG.map(f => {
-                const avg = avgScores.find(a => a.factor === f.label)?.value || 0;
-                const Icon = f.icon;
-                return (
-                  <div key={f.key} className="text-center space-y-1">
-                    <Icon className="w-5 h-5 mx-auto" style={{ color: f.color }} />
-                    <p className="text-xs text-muted-foreground">{f.label}</p>
-                    <p className={`text-lg font-bold ${getScoreColor(avg)}`}>{avg}</p>
-                    <Progress value={avg} className="h-1.5" />
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Quantitative Averages */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-blue-500" />
+                Quantitative Factors — Universe Average
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Average scores across {stocks.length} Fintech stocks
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                {quantAvg.map(f => {
+                  const cfg = QUANT_FACTORS.find(c => c.label === f.factor)!;
+                  const Icon = cfg.icon;
+                  return (
+                    <div key={f.factor} className="text-center space-y-1">
+                      <Icon className="w-5 h-5 mx-auto" style={{ color: f.color }} />
+                      <p className="text-[11px] text-muted-foreground">{f.factor}</p>
+                      <p className={`text-lg font-bold ${getScoreColor(f.value)}`}>{f.value}</p>
+                      <Progress value={f.value} className="h-1.5" />
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Qualitative Averages */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <Lightbulb className="w-4 h-4 text-violet-500" />
+                Qualitative Factors — Universe Average
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Average scores across {stocks.length} Fintech stocks
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                {qualAvg.map(f => {
+                  const cfg = QUAL_FACTORS.find(c => c.label === f.factor)!;
+                  const Icon = cfg.icon;
+                  return (
+                    <div key={f.factor} className="text-center space-y-1">
+                      <Icon className="w-5 h-5 mx-auto" style={{ color: f.color }} />
+                      <p className="text-[11px] text-muted-foreground">{f.factor}</p>
+                      <p className={`text-lg font-bold ${getScoreColor(f.value)}`}>{f.value}</p>
+                      <Progress value={f.value} className="h-1.5" />
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* ── Sector Filter ──────────────────────────────────────────────── */}
         <div className="flex items-center gap-2 flex-wrap">
@@ -623,16 +712,31 @@ export default function StockPickerPage() {
                       <div className="flex items-center gap-1">Name <SortIcon field="name" /></div>
                     </th>
                     <th className="text-left py-2 px-2 font-medium text-muted-foreground hidden md:table-cell">Sector</th>
-                    <th className="text-right py-2 px-2 font-medium text-muted-foreground hidden lg:table-cell">Market Cap</th>
-                    {FACTOR_CONFIG.map(f => (
+                    <th className="text-right py-2 px-2 font-medium text-muted-foreground hidden lg:table-cell">Mkt Cap</th>
+                    {/* Quant factors - visible at xl */}
+                    {QUANT_FACTORS.map(f => (
                       <th
                         key={f.key}
-                        className="text-right py-2 px-2 font-medium text-muted-foreground cursor-pointer hover:text-foreground hidden xl:table-cell"
+                        className="text-right py-2 px-1 font-medium text-muted-foreground cursor-pointer hover:text-foreground hidden xl:table-cell"
                         onClick={() => handleSort(f.key)}
                       >
-                        <div className="flex items-center justify-end gap-1">
+                        <div className="flex items-center justify-end gap-0.5">
                           <f.icon className="w-3 h-3" style={{ color: f.color }} />
-                          <span className="text-xs">{f.label.split(' ')[0]}</span>
+                          <span className="text-[10px]">{f.label.split(' ')[0].slice(0, 5)}</span>
+                          <SortIcon field={f.key} />
+                        </div>
+                      </th>
+                    ))}
+                    {/* Qual factors - visible at 2xl */}
+                    {QUAL_FACTORS.map(f => (
+                      <th
+                        key={f.key}
+                        className="text-right py-2 px-1 font-medium text-muted-foreground cursor-pointer hover:text-foreground hidden 2xl:table-cell"
+                        onClick={() => handleSort(f.key)}
+                      >
+                        <div className="flex items-center justify-end gap-0.5">
+                          <f.icon className="w-3 h-3" style={{ color: f.color }} />
+                          <span className="text-[10px]">{f.label.split(' ')[0].slice(0, 5)}</span>
                           <SortIcon field={f.key} />
                         </div>
                       </th>
@@ -643,7 +747,7 @@ export default function StockPickerPage() {
                     >
                       <div className="flex items-center justify-end gap-1">
                         <Flame className="w-3.5 h-3.5 text-orange-500" />
-                        5X Score
+                        5X
                         <SortIcon field="fiveXScore" />
                       </div>
                     </th>
@@ -672,11 +776,18 @@ export default function StockPickerPage() {
                         </Badge>
                       </td>
                       <td className="py-2.5 px-2 text-right text-xs font-mono hidden lg:table-cell">
-                        {formatMarketCap(stock.marketCap)}
+                        {stock.marketCap}
                       </td>
-                      {FACTOR_CONFIG.map(f => (
-                        <td key={f.key} className="py-2.5 px-2 text-right hidden xl:table-cell">
-                          <span className={`text-xs font-mono ${getScoreColor(stock[f.key])}`}>
+                      {QUANT_FACTORS.map(f => (
+                        <td key={f.key} className="py-2.5 px-1 text-right hidden xl:table-cell">
+                          <span className={`text-[11px] font-mono ${getScoreColor(stock[f.key])}`}>
+                            {stock[f.key]}
+                          </span>
+                        </td>
+                      ))}
+                      {QUAL_FACTORS.map(f => (
+                        <td key={f.key} className="py-2.5 px-1 text-right hidden 2xl:table-cell">
+                          <span className={`text-[11px] font-mono ${getScoreColor(stock[f.key])}`}>
                             {stock[f.key]}
                           </span>
                         </td>
@@ -706,26 +817,47 @@ export default function StockPickerPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
               <Brain className="w-4 h-4 text-muted-foreground" />
-              About the 5X Finder Model
+              About the 5X Finder Model — 11-Factor Framework
             </CardTitle>
           </CardHeader>
-          <CardContent className="pt-0 text-xs text-muted-foreground space-y-2">
+          <CardContent className="pt-0 text-xs text-muted-foreground space-y-3">
             <p>
-              <strong>5X Finder</strong> is a multi-factor stock picking model designed to identify Fintech stocks with the highest probability of achieving a <strong>5x return within 2 years</strong>. The model combines quantitative factor scoring with AI-powered qualitative analysis.
+              <strong>5X Finder</strong> is a multi-factor stock picking model designed to identify Fintech stocks with the highest probability of achieving a <strong>5x return within 2 years</strong>. The model combines 6 quantitative factors with 5 qualitative factors, powered by AI analysis.
             </p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
-              {FACTOR_CONFIG.map(f => (
-                <div key={f.key} className="flex items-start gap-2">
-                  <f.icon className="w-4 h-4 mt-0.5 shrink-0" style={{ color: f.color }} />
-                  <div>
-                    <p className="font-medium text-foreground">{f.label}</p>
-                    <p className="text-[11px]">{f.desc}</p>
-                  </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Quantitative */}
+              <div>
+                <p className="font-semibold text-foreground mb-2">📊 Quantitative Factors</p>
+                <div className="space-y-2">
+                  {QUANT_FACTORS.map(f => (
+                    <div key={f.key} className="flex items-start gap-2">
+                      <f.icon className="w-4 h-4 mt-0.5 shrink-0" style={{ color: f.color }} />
+                      <div>
+                        <p className="font-medium text-foreground">{f.label}</p>
+                        <p className="text-[11px]">{f.desc}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
+              {/* Qualitative */}
+              <div>
+                <p className="font-semibold text-foreground mb-2">🧠 Qualitative Factors</p>
+                <div className="space-y-2">
+                  {QUAL_FACTORS.map(f => (
+                    <div key={f.key} className="flex items-start gap-2">
+                      <f.icon className="w-4 h-4 mt-0.5 shrink-0" style={{ color: f.color }} />
+                      <div>
+                        <p className="font-medium text-foreground">{f.label}</p>
+                        <p className="text-[11px]">{f.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
             <p className="mt-2">
-              The <strong>Industry Knowledge</strong> factor is unique — it reflects your Fintech domain expertise, overlaying qualitative judgments about market timing, regulatory environment, and technology trends that pure quantitative models miss. Adjust factor weights to match your investment thesis.
+              The qualitative factors are especially critical for identifying 5x potential — they capture the <strong>execution risk, innovation velocity, capital efficiency, customer loyalty, and business model quality</strong> that pure quantitative models miss. Adjust factor weights to match your investment thesis.
             </p>
           </CardContent>
         </Card>
@@ -733,11 +865,11 @@ export default function StockPickerPage() {
 
       {/* ── Footer ─────────────────────────────────────────────────────────── */}
       <footer className="mt-auto border-t bg-card/50">
-        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 py-4 flex items-center justify-between text-xs text-muted-foreground">
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground">
           <div className="flex items-center gap-2">
             <Flame className="w-4 h-4 text-orange-500" />
             <span className="font-medium">5X Finder</span>
-            <span>· AI-Powered Fintech Stock Picking</span>
+            <span>· 11-Factor AI-Powered Fintech Stock Picking</span>
           </div>
           <span>For informational purposes only. Not financial advice.</span>
         </div>
@@ -750,7 +882,7 @@ export default function StockPickerPage() {
             <>
               <DialogHeader className="px-6 pt-6 pb-2">
                 <DialogDescription className="sr-only">{selectedStock.name} detailed analysis and factor scores</DialogDescription>
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-2">
                   <div className="flex items-center gap-3">
                     <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${getScoreBg(selectedStock.fiveXScore)}`}>
                       <span className={`text-xl font-bold ${getScoreColor(selectedStock.fiveXScore)}`}>
@@ -818,7 +950,7 @@ export default function StockPickerPage() {
                   {/* Description */}
                   <p className="text-sm text-muted-foreground">{selectedStock.description}</p>
 
-                  {/* Tabs: Factor Radar | Factor Breakdown | AI Analysis | News */}
+                  {/* Tabs */}
                   <Tabs defaultValue="factors" className="w-full">
                     <TabsList className="w-full justify-start">
                       <TabsTrigger value="factors" className="text-xs">Factor Radar</TabsTrigger>
@@ -831,11 +963,11 @@ export default function StockPickerPage() {
 
                     {/* Factor Radar */}
                     <TabsContent value="factors" className="mt-3">
-                      <ResponsiveContainer width="100%" height={300}>
+                      <ResponsiveContainer width="100%" height={350}>
                         <RadarChart data={getRadarData(selectedStock)}>
                           <PolarGrid stroke="#e2e8f0" />
-                          <PolarAngleAxis dataKey="factor" tick={{ fontSize: 11 }} />
-                          <PolarRadiusAxis domain={[0, 100]} tick={{ fontSize: 10 }} />
+                          <PolarAngleAxis dataKey="factor" tick={{ fontSize: 10 }} />
+                          <PolarRadiusAxis domain={[0, 100]} tick={{ fontSize: 9 }} />
                           <Radar
                             name={selectedStock.ticker}
                             dataKey="value"
@@ -849,26 +981,67 @@ export default function StockPickerPage() {
                     </TabsContent>
 
                     {/* Factor Breakdown */}
-                    <TabsContent value="breakdown" className="mt-3 space-y-3">
-                      {FACTOR_CONFIG.map(f => {
-                        const val = selectedStock[f.key];
-                        const weight = weights ? (weights[f.key] * 100).toFixed(0) : '—';
-                        const Icon = f.icon;
-                        return (
-                          <div key={f.key} className="space-y-1">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <Icon className="w-4 h-4" style={{ color: f.color }} />
-                                <span className="text-sm font-medium">{f.label}</span>
-                                <span className="text-[11px] text-muted-foreground">(Weight: {weight}%)</span>
+                    <TabsContent value="breakdown" className="mt-3 space-y-4">
+                      {/* Quantitative */}
+                      <div>
+                        <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1">
+                          <BarChart3 className="w-3.5 h-3.5 text-blue-500" />
+                          QUANTITATIVE FACTORS
+                        </p>
+                        <div className="space-y-3">
+                          {QUANT_FACTORS.map(f => {
+                            const val = selectedStock[f.key];
+                            const weight = weights ? (weights[f.key] * 100).toFixed(0) : '—';
+                            const Icon = f.icon;
+                            return (
+                              <div key={f.key} className="space-y-1">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <Icon className="w-4 h-4" style={{ color: f.color }} />
+                                    <span className="text-sm font-medium">{f.label}</span>
+                                    <span className="text-[11px] text-muted-foreground">(W: {weight}%)</span>
+                                  </div>
+                                  <span className={`font-mono font-bold ${getScoreColor(val)}`}>{val}/100</span>
+                                </div>
+                                <Progress value={val} className="h-2" />
+                                <p className="text-[11px] text-muted-foreground">{f.desc}</p>
                               </div>
-                              <span className={`font-mono font-bold ${getScoreColor(val)}`}>{val}/100</span>
-                            </div>
-                            <Progress value={val} className="h-2" />
-                            <p className="text-[11px] text-muted-foreground">{f.desc}</p>
-                          </div>
-                        );
-                      })}
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <Separator />
+
+                      {/* Qualitative */}
+                      <div>
+                        <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1">
+                          <Lightbulb className="w-3.5 h-3.5 text-violet-500" />
+                          QUALITATIVE FACTORS
+                        </p>
+                        <div className="space-y-3">
+                          {QUAL_FACTORS.map(f => {
+                            const val = selectedStock[f.key];
+                            const weight = weights ? (weights[f.key] * 100).toFixed(0) : '—';
+                            const Icon = f.icon;
+                            return (
+                              <div key={f.key} className="space-y-1">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <Icon className="w-4 h-4" style={{ color: f.color }} />
+                                    <span className="text-sm font-medium">{f.label}</span>
+                                    <span className="text-[11px] text-muted-foreground">(W: {weight}%)</span>
+                                  </div>
+                                  <span className={`font-mono font-bold ${getScoreColor(val)}`}>{val}/100</span>
+                                </div>
+                                <Progress value={val} className="h-2" />
+                                <p className="text-[11px] text-muted-foreground">{f.desc}</p>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
                       <Separator />
                       <div className="flex items-center justify-between pt-1">
                         <span className="font-semibold">Composite 5X Score</span>
@@ -888,7 +1061,7 @@ export default function StockPickerPage() {
                         <div className="flex flex-col items-center justify-center py-12 text-center">
                           <Brain className="w-10 h-10 text-muted-foreground mb-3" />
                           <p className="text-sm text-muted-foreground mb-3">
-                            No AI analysis yet. Run the analysis to get a detailed 5X thesis.
+                            No AI analysis yet. Run the analysis to get a detailed 5X thesis with qualitative assessment.
                           </p>
                           <Button
                             onClick={() => handleAnalyze(selectedStock.ticker)}
@@ -918,7 +1091,7 @@ export default function StockPickerPage() {
                                 className="text-sm font-medium hover:underline flex items-center gap-1"
                               >
                                 {item.title}
-                                <ArrowUpRight className="w-3 h-3 shrink-0" />
+                                <Zap className="w-3 h-3 shrink-0" />
                               </a>
                               <p className="text-xs text-muted-foreground line-clamp-2">{item.snippet}</p>
                               <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
@@ -960,7 +1133,7 @@ export default function StockPickerPage() {
 
       {/* ── Weights Dialog ─────────────────────────────────────────────────── */}
       <Dialog open={weightsOpen} onOpenChange={setWeightsOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Settings2 className="w-5 h-5" />
@@ -969,61 +1142,101 @@ export default function StockPickerPage() {
             <DialogDescription className="sr-only">Customize the weight of each scoring factor</DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
-            <p className="text-xs text-muted-foreground">
-              Customize the weight of each factor in the 5X composite score. Weights must sum to 100%. Your industry expertise should inform these weights.
-            </p>
+          <ScrollArea className="flex-1 -mx-6 px-6">
+            <div className="space-y-4 pb-2">
+              <p className="text-xs text-muted-foreground">
+                Customize the weight of each factor in the 5X composite score. Weights must sum to 100%. Your industry expertise should inform these weights.
+              </p>
 
-            {FACTOR_CONFIG.map(f => (
-              <div key={f.key} className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <f.icon className="w-4 h-4" style={{ color: f.color }} />
-                    <span className="text-sm">{f.label}</span>
-                  </div>
-                  <span className="font-mono text-sm font-medium">{localWeights[f.key]}%</span>
+              {/* Quantitative */}
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1">
+                  <BarChart3 className="w-3.5 h-3.5 text-blue-500" />
+                  QUANTITATIVE FACTORS
+                </p>
+                <div className="space-y-3">
+                  {QUANT_FACTORS.map(f => (
+                    <div key={f.key} className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <f.icon className="w-4 h-4" style={{ color: f.color }} />
+                          <span className="text-sm">{f.label}</span>
+                        </div>
+                        <span className="font-mono text-sm font-medium">{localWeights[f.key]}%</span>
+                      </div>
+                      <Slider
+                        value={[localWeights[f.key]]}
+                        min={0}
+                        max={30}
+                        step={1}
+                        onValueChange={([v]) =>
+                          setLocalWeights(prev => ({ ...prev, [f.key]: v }))
+                        }
+                      />
+                    </div>
+                  ))}
                 </div>
-                <Slider
-                  value={[localWeights[f.key]]}
-                  min={0}
-                  max={50}
-                  step={1}
-                  onValueChange={([v]) =>
-                    setLocalWeights(prev => ({ ...prev, [f.key]: v }))
-                  }
-                />
               </div>
-            ))}
 
-            <Separator />
+              <Separator />
 
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Total</span>
-              <span className={`font-mono text-sm font-bold ${
-                Math.abs(Object.values(localWeights).reduce((a, b) => a + b, 0) - 100) < 2
-                  ? 'text-emerald-600'
-                  : 'text-red-600'
-              }`}>
-                {Object.values(localWeights).reduce((a, b) => a + b, 0)}%
-              </span>
+              {/* Qualitative */}
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1">
+                  <Lightbulb className="w-3.5 h-3.5 text-violet-500" />
+                  QUALITATIVE FACTORS
+                </p>
+                <div className="space-y-3">
+                  {QUAL_FACTORS.map(f => (
+                    <div key={f.key} className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <f.icon className="w-4 h-4" style={{ color: f.color }} />
+                          <span className="text-sm">{f.label}</span>
+                        </div>
+                        <span className="font-mono text-sm font-medium">{localWeights[f.key]}%</span>
+                      </div>
+                      <Slider
+                        value={[localWeights[f.key]]}
+                        min={0}
+                        max={30}
+                        step={1}
+                        onValueChange={([v]) =>
+                          setLocalWeights(prev => ({ ...prev, [f.key]: v }))
+                        }
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <Separator />
+
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Total</span>
+                <span className={`font-mono text-sm font-bold ${
+                  Math.abs(Object.values(localWeights).reduce((a, b) => a + b, 0) - 100) < 2
+                    ? 'text-emerald-600'
+                    : 'text-red-600'
+                }`}>
+                  {Object.values(localWeights).reduce((a, b) => a + b, 0)}%
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setLocalWeights({ ...DEFAULT_WEIGHTS_LOCAL })}
+                >
+                  Reset Default
+                </Button>
+                <Button className="flex-1" onClick={handleSaveWeights}>
+                  Save & Recalculate
+                </Button>
+              </div>
             </div>
-
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={() => setLocalWeights({
-                  revenueGrowth: 20, marketOpportunity: 20, competitiveMoat: 20,
-                  profitabilityPath: 15, valuation: 15, industryKnowledge: 10,
-                })}
-              >
-                Reset Default
-              </Button>
-              <Button className="flex-1" onClick={handleSaveWeights}>
-                Save & Recalculate
-              </Button>
-            </div>
-          </div>
+          </ScrollArea>
         </DialogContent>
       </Dialog>
     </div>

@@ -17,10 +17,16 @@ export async function GET() {
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
-    const { revenueGrowth, marketOpportunity, competitiveMoat, profitabilityPath, valuation, industryKnowledge } = body;
+    const {
+      revenueGrowth, marketOpportunity, competitiveMoat, profitabilityPath,
+      valuation, industryKnowledge, executionCapabilities, innovationCulture,
+      fundingStrength, customerStickiness, monetizationModel,
+    } = body;
 
     // Validate weights sum to 1.0
-    const total = revenueGrowth + marketOpportunity + competitiveMoat + profitabilityPath + valuation + industryKnowledge;
+    const total = revenueGrowth + marketOpportunity + competitiveMoat + profitabilityPath +
+      valuation + industryKnowledge + executionCapabilities + innovationCulture +
+      fundingStrength + customerStickiness + monetizationModel;
     if (Math.abs(total - 1.0) > 0.01) {
       return NextResponse.json({ error: `Weights must sum to 1.0, got ${total.toFixed(2)}` }, { status: 400 });
     }
@@ -28,14 +34,20 @@ export async function PUT(request: Request) {
     const existingWeights = await db.factorWeight.findFirst();
     let weights;
 
+    const weightData = {
+      revenueGrowth, marketOpportunity, competitiveMoat, profitabilityPath,
+      valuation, industryKnowledge, executionCapabilities, innovationCulture,
+      fundingStrength, customerStickiness, monetizationModel,
+    };
+
     if (existingWeights) {
       weights = await db.factorWeight.update({
         where: { id: existingWeights.id },
-        data: { revenueGrowth, marketOpportunity, competitiveMoat, profitabilityPath, valuation, industryKnowledge },
+        data: weightData,
       });
     } else {
       weights = await db.factorWeight.create({
-        data: { revenueGrowth, marketOpportunity, competitiveMoat, profitabilityPath, valuation, industryKnowledge },
+        data: weightData,
       });
     }
 
@@ -48,7 +60,12 @@ export async function PUT(request: Request) {
         stock.competitiveMoat * competitiveMoat +
         stock.profitabilityPath * profitabilityPath +
         stock.valuation * valuation +
-        stock.industryKnowledge * industryKnowledge
+        stock.industryKnowledge * industryKnowledge +
+        stock.executionCapabilities * executionCapabilities +
+        stock.innovationCulture * innovationCulture +
+        stock.fundingStrength * fundingStrength +
+        stock.customerStickiness * customerStickiness +
+        stock.monetizationModel * monetizationModel
       );
 
       await db.stock.update({
