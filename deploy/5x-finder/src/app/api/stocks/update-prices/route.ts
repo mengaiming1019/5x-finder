@@ -43,8 +43,12 @@ const YAHOO_TICKERS: Record<string, string> = {
 // Currency symbols for display
 const CURRENCY_SYMBOLS: Record<string, string> = {
   'ADYEN.AS': '€',
-  'WISE.L': '£',
   '323410.KS': '₩',
+};
+
+// Tickers whose prices should be converted to USD from their local currency
+const CONVERT_TO_USD: Record<string, number> = {
+  'WISE.L': 1.27, // GBP to USD conversion rate
 };
 
 export async function POST() {
@@ -82,16 +86,24 @@ export async function POST() {
 
             if (!regularMarketPrice || regularMarketPrice <= 0) return null;
 
+            // Convert to USD if needed
+            let displayPrice = regularMarketPrice;
+            let displayCurrency = currency;
+            if (CONVERT_TO_USD[yahooTicker]) {
+              displayPrice = regularMarketPrice * CONVERT_TO_USD[yahooTicker];
+              displayCurrency = 'USD';
+            }
+
             // Format price with appropriate currency symbol
             let priceStr: string;
-            if (currency === 'KRW') {
-              priceStr = `₩${Math.round(regularMarketPrice).toLocaleString()}`;
-            } else if (currency === 'EUR') {
-              priceStr = `€${regularMarketPrice.toFixed(2)}`;
-            } else if (currency === 'GBP') {
-              priceStr = `£${regularMarketPrice.toFixed(2)}`;
+            if (displayCurrency === 'KRW') {
+              priceStr = `₩${Math.round(displayPrice).toLocaleString()}`;
+            } else if (displayCurrency === 'EUR') {
+              priceStr = `€${displayPrice.toFixed(2)}`;
+            } else if (displayCurrency === 'GBP') {
+              priceStr = `£${displayPrice.toFixed(2)}`;
             } else {
-              priceStr = `$${regularMarketPrice.toFixed(2)}`;
+              priceStr = `$${displayPrice.toFixed(2)}`;
             }
 
             return { ticker: stock.ticker, price: priceStr };
