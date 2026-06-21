@@ -19,13 +19,12 @@ export async function PUT(request: Request) {
     const body = await request.json();
     const {
       revenueGrowth, marketOpportunity, competitiveMoat, profitabilityPath,
-      valuation, industryKnowledge, executionCapabilities, innovationCulture,
+      valuation, executionCapabilities, innovationCulture,
       fundingStrength, customerStickiness, monetizationModel,
     } = body;
 
-    // Validate weights sum to 1.0
     const total = revenueGrowth + marketOpportunity + competitiveMoat + profitabilityPath +
-      valuation + industryKnowledge + executionCapabilities + innovationCulture +
+      valuation + executionCapabilities + innovationCulture +
       fundingStrength + customerStickiness + monetizationModel;
     if (Math.abs(total - 1.0) > 0.01) {
       return NextResponse.json({ error: `Weights must sum to 1.0, got ${total.toFixed(2)}` }, { status: 400 });
@@ -36,7 +35,7 @@ export async function PUT(request: Request) {
 
     const weightData = {
       revenueGrowth, marketOpportunity, competitiveMoat, profitabilityPath,
-      valuation, industryKnowledge, executionCapabilities, innovationCulture,
+      valuation, executionCapabilities, innovationCulture,
       fundingStrength, customerStickiness, monetizationModel,
     };
 
@@ -46,12 +45,9 @@ export async function PUT(request: Request) {
         data: weightData,
       });
     } else {
-      weights = await db.factorWeight.create({
-        data: weightData,
-      });
+      weights = await db.factorWeight.create({ data: weightData });
     }
 
-    // Recalculate all stock scores
     const stocks = await db.stock.findMany();
     for (const stock of stocks) {
       const fiveXScore = Math.round(
@@ -60,7 +56,6 @@ export async function PUT(request: Request) {
         stock.competitiveMoat * competitiveMoat +
         stock.profitabilityPath * profitabilityPath +
         stock.valuation * valuation +
-        stock.industryKnowledge * industryKnowledge +
         stock.executionCapabilities * executionCapabilities +
         stock.innovationCulture * innovationCulture +
         stock.fundingStrength * fundingStrength +

@@ -25,7 +25,6 @@ model Stock {
   competitiveMoat    Int
   profitabilityPath  Int
   valuation          Int
-  industryKnowledge  Int
 
   // Qualitative Factor Scores (0-100)
   executionCapabilities Int
@@ -51,17 +50,16 @@ model Stock {
 model FactorWeight {
   id                String @id @default(cuid())
   // Quantitative weights
-  revenueGrowth     Float  @default(0.12)
-  marketOpportunity Float  @default(0.12)
-  competitiveMoat   Float  @default(0.10)
+  revenueGrowth     Float  @default(0.15)
+  marketOpportunity Float  @default(0.15)
+  competitiveMoat   Float  @default(0.15)
   profitabilityPath Float  @default(0.10)
-  valuation         Float  @default(0.08)
-  industryKnowledge Float  @default(0.08)
+  valuation         Float  @default(0.10)
   // Qualitative weights
   executionCapabilities Float @default(0.10)
   innovationCulture     Float @default(0.08)
-  fundingStrength       Float @default(0.08)
-  customerStickiness    Float @default(0.08)
-  monetizationModel     Float @default(0.06)
+  fundingStrength       Float @default(0.07)
+  customerStickiness    Float @default(0.05)
+  monetizationModel     Float @default(0.05)
   updatedAt         DateTime @updatedAt
 }

@@ -48,3 +48,30 @@ Stage Summary:
 - All weights adjustable with auto-recalculation
 - Frontend fully updated with split Quantitative/Qualitative sections
 - Top rankings: NU (81), MELI (81), ADYEY (78), SHOP (75), PLTR (74)
+
+---
+Task ID: 3
+Agent: Main Agent
+Task: Fix app, update stock prices to real-time, remove Industry Knowledge
+
+Work Log:
+- Diagnosed app not working: dev server process was dying due to sandbox resource constraints; added retry logic for API fetch on initial load
+- Removed Industry Knowledge (industryKnowledge) from both Prisma schema (Stock and FactorWeight models) and all API/frontend code
+- Fetched real-time stock prices via web search for all 16 stocks
+- Updated seed data with current prices: NU $12.74, MELI $1,633, SQ $74.78, UPST $32.43, SOFI $17.91, LMND $58.84, AFRM $73.92, ADYEY €1,620, SHOP $108.84, COIN $163.26, HOOD $108.00, MQ $3.87, WISE £8.20, PLTR $128.47, PATH $10.72, FLYW $14.13
+- Updated market caps to reflect current valuations (e.g. PLTR $285.6B, HOOD $97.5B, SHOP $136.2B)
+- Changed FLYT ticker to FLYW (correct Nasdaq ticker for Flywire)
+- Rescaled weights: Quantitative (15%, 15%, 15%, 10%, 10%) + Qualitative (10%, 8%, 7%, 5%, 5%) = 100%
+- Updated API weights recalculation to use 10 factors (no industryKnowledge)
+- Updated AI analysis prompt with 10 factors only
+- Added "Price" column visible in table at lg breakpoint
+- Added retry mechanism for initial data fetch to handle server startup timing
+- Force-reset DB, re-seeded with new schema and data
+- Verified with Agent Browser: page loads, top picks show current prices, stock detail dialog shows 10 factors with no Industry Knowledge, breakdown shows QUANTITATIVE (5) + QUALITATIVE (5) sections
+- Lint passes with no errors
+
+Stage Summary:
+- 10-factor scoring model: 5 quantitative + 5 qualitative (Industry Knowledge removed)
+- All stock prices updated to real-time via web search (June 2026)
+- Top rankings: NU (80), MELI (80), ADYEY (77), SHOP (74), PLTR (73)
+- App verified working via Agent Browser with correct data

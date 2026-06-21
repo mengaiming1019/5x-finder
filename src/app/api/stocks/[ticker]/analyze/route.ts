@@ -40,7 +40,6 @@ Quantitative Factor Scores (0-100):
 - Competitive Moat: ${stock.competitiveMoat}/100
 - Profitability Path: ${stock.profitabilityPath}/100
 - Valuation: ${stock.valuation}/100
-- Industry Knowledge: ${stock.industryKnowledge}/100
 
 Qualitative Factor Scores (0-100):
 - Execution Capabilities: ${stock.executionCapabilities}/100
@@ -63,7 +62,7 @@ Please provide a structured analysis covering:
 9. **Industry Context**: How does this company fit into the broader Fintech landscape?
 10. **Verdict**: Your overall assessment with a confidence level (High/Medium/Low)
 
-Keep the analysis concise but insightful. Focus on actionable intelligence that only a seasoned Fintech analyst would provide.`,
+Keep the analysis concise but insightful. Focus on actionable intelligence.`,
         },
       ],
       thinking: { type: 'disabled' },
@@ -73,10 +72,7 @@ Keep the analysis concise but insightful. Focus on actionable intelligence that 
 
     await db.stock.update({
       where: { ticker: ticker.toUpperCase() },
-      data: {
-        aiAnalysis,
-        lastAnalyzed: new Date(),
-      },
+      data: { aiAnalysis, lastAnalyzed: new Date() },
     });
 
     return NextResponse.json({ analysis: aiAnalysis, ticker: ticker.toUpperCase() });
