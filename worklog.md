@@ -261,3 +261,28 @@ Stage Summary:
 - All resources served locally from the same origin
 - 7 security headers added for privacy and security compliance
 - No privacy errors expected when publishing
+
+---
+Task ID: 10
+Agent: Main Agent
+Task: Fix blank page caused by broken font paths and overly strict CSP
+
+Work Log:
+- Identified two root causes of blank page:
+  1. Font file paths in layout.tsx pointed to non-existent geist/dist/fonts/ directory
+  2. Content-Security-Policy was too strict: blocked ws:/wss: (HMR/WebSocket), blocked Google Fonts CDN
+- Reverted layout.tsx to use next/font/google (Geist, Geist_Mono) — Next.js self-hosts these at build time
+- Relaxed CSP in next.config.ts:
+  - Added https://fonts.googleapis.com to style-src
+  - Added https://fonts.gstatic.com to font-src
+  - Added ws: wss: to connect-src (for HMR/WebSocket)
+- Kept all other security headers (X-Frame-Options, X-Content-Type-Options, Referrer-Policy, etc.)
+- Verified: page loads correctly with 26 stocks, no console errors
+- Verified: security headers still present in HTTP responses
+- Verified: stock detail dialog works (click, tabs, scroll)
+- Lint passes
+
+Stage Summary:
+- Blank page fixed by reverting to next/font/google and relaxing CSP
+- All security headers still active for privacy compliance
+- App fully functional again
