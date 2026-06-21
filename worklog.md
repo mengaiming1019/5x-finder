@@ -185,3 +185,23 @@ Stage Summary:
 - Auto-restarts server within 5 seconds if it goes down
 - All 26 stocks, 10-factor model, AI analysis, news, weights all verified working
 - App fully functional and accessible via Preview Panel
+
+---
+Task ID: 7
+Agent: Main Agent
+Task: Fix Monetization Model not visible in Weights dialog
+
+Work Log:
+- Investigated issue: Monetization Model WAS in the code (QUAL_FACTORS array, line 98) and rendered via .map(), but the ScrollArea component was clipping the bottom content
+- The ScrollArea with flex-1 inside the dialog caused the Monetization Model, Total, and Save buttons to be hidden below the fold
+- Replaced ScrollArea with a simple overflow-y-auto div for reliable scrolling
+- Increased dialog max height from max-h-[85vh] to max-h-[90vh]
+- Verified all 10 sliders are now visible in the Weights dialog including Monetization Model (5%)
+- Verified Save & Recalculate works correctly
+- Verified on both mobile (375x812) and desktop (1280x800) viewports
+- No page errors, lint passes
+
+Stage Summary:
+- Fixed Weights dialog clipping issue by replacing ScrollArea with overflow-y-auto
+- All 10 factor weight sliders now fully visible and interactive
+- Monetization Model slider at 5% is accessible and adjustable

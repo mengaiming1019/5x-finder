@@ -457,9 +457,9 @@ export default function StockPickerPage() {
 
       {/* Weights Dialog */}
       <Dialog open={weightsOpen} onOpenChange={setWeightsOpen}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-hidden flex flex-col">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader><DialogTitle className="flex items-center gap-2"><Settings2 className="w-5 h-5" />Adjust Factor Weights</DialogTitle><DialogDescription className="sr-only">Customize factor weights</DialogDescription></DialogHeader>
-          <ScrollArea className="flex-1 -mx-6 px-6"><div className="space-y-4 pb-2">
+          <div className="flex-1 overflow-y-auto -mx-6 px-6 space-y-4 pb-2">
             <p className="text-xs text-muted-foreground">Customize the weight of each factor. Must sum to 100%.</p>
             <div><p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1"><BarChart3 className="w-3.5 h-3.5 text-blue-500" />QUANTITATIVE</p><div className="space-y-3">{QUANT_FACTORS.map(f => (<div key={f.key} className="space-y-1.5"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><f.icon className="w-4 h-4" style={{ color: f.color }} /><span className="text-sm">{f.label}</span></div><span className="font-mono text-sm font-medium">{localWeights[f.key] ?? 0}%</span></div><Slider value={[localWeights[f.key] ?? 0]} min={0} max={30} step={1} onValueChange={([v]) => setLocalWeights(prev => ({ ...prev, [f.key]: v }))} /></div>))}</div></div>
             <Separator />
@@ -467,7 +467,7 @@ export default function StockPickerPage() {
             <Separator />
             <div className="flex items-center justify-between"><span className="text-sm font-medium">Total</span><span className={`font-mono text-sm font-bold ${Math.abs(Object.values(localWeights).reduce((a, b) => a + b, 0) - 100) < 2 ? 'text-emerald-600' : 'text-red-600'}`}>{Object.values(localWeights).reduce((a, b) => a + b, 0)}%</span></div>
             <div className="flex items-center gap-2"><Button variant="outline" className="flex-1" onClick={() => setLocalWeights({ ...DEFAULT_WEIGHTS_LOCAL })}>Reset Default</Button><Button className="flex-1" onClick={handleSaveWeights}>Save & Recalculate</Button></div>
-          </div></ScrollArea>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
