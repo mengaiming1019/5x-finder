@@ -286,3 +286,27 @@ Stage Summary:
 - Blank page fixed by reverting to next/font/google and relaxing CSP
 - All security headers still active for privacy compliance
 - App fully functional again
+
+---
+Task ID: 11
+Agent: Main Agent
+Task: Fix app not opening (blank page) due to Content-Security-Policy
+
+Work Log:
+- Identified root cause: Content-Security-Policy header was blocking Next.js dev mode scripts
+- CSP with frame-ancestors 'none' and strict default-src 'self' interfered with Turbopack HMR and client-side hydration
+- Removed Content-Security-Policy and Strict-Transport-Security headers (too aggressive for dev mode, cause blank pages)
+- Kept 4 safe, non-breaking security headers:
+  - X-Frame-Options: DENY
+  - X-Content-Type-Options: nosniff
+  - Referrer-Policy: strict-origin-when-cross-origin
+  - Permissions-Policy: camera=(), microphone=(), geolocation=()
+- Verified: page loads with full data (26 stocks, NU=81 top pick)
+- Verified: no browser console errors
+- Verified: gateway (port 81) also works correctly
+- Verified: all 4 security headers present in HTTP responses
+
+Stage Summary:
+- Removed CSP and HSTS headers that were blocking the app
+- App now loads correctly with 4 privacy-preserving security headers
+- No blank page, no CSP violations, fully functional
