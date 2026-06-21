@@ -84,7 +84,7 @@ Keep concise but insightful. Focus on actionable intelligence.`;
       const errBody = await response.text();
       console.error('OpenAI API error:', response.status, errBody);
       return NextResponse.json(
-        { error: 'Failed to get AI analysis from OpenAI' },
+        { error: `OpenAI API error (${response.status}): ${errBody.slice(0, 200)}` },
         { status: 502 }
       );
     }
