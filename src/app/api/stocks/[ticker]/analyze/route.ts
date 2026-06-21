@@ -1,0 +1,74 @@
+import { NextResponse } from 'next/server';
+import { db } from '@/lib/db';
+import ZAI from 'z-ai-web-dev-sdk';
+
+export async function POST(
+  _request: Request,
+  { params }: { params: Promise<{ ticker: string }> }
+) {
+  try {
+    const { ticker } = await params;
+    const stock = await db.stock.findUnique({
+      where: { ticker: ticker.toUpperCase() },
+    });
+
+    if (!stock) {
+      return NextResponse.json({ error: 'Stock not found' }, { status: 404 });
+    }
+
+    const zai = await ZAI.create();
+
+    const completion = await zai.chat.completions.create({
+      messages: [
+        {
+          role: 'assistant',
+          content: `You are a world-class Fintech industry analyst with 20+ years of experience. You specialize in identifying high-growth Fintech stocks that can achieve 5x returns within 2 years. Your analysis combines deep industry knowledge, competitive analysis, and financial modeling. Provide specific, actionable insights.`,
+        },
+        {
+          role: 'user',
+          content: `Analyze ${stock.name} (${stock.ticker}) as a potential 5x investment opportunity within 2 years.
+
+Company Profile:
+- Sector: ${stock.sector} / ${stock.subSector}
+- Market Cap: ${stock.marketCap}
+- Current Price: ${stock.price}
+- Description: ${stock.description}
+
+Current Factor Scores (0-100):
+- Revenue Growth: ${stock.revenueGrowth}/100
+- Market Opportunity: ${stock.marketOpportunity}/100
+- Competitive Moat: ${stock.competitiveMoat}/100
+- Profitability Path: ${stock.profitabilityPath}/100
+- Valuation: ${stock.valuation}/100
+- Industry Knowledge: ${stock.industryKnowledge}/100
+- Composite 5X Score: ${stock.fiveXScore}/100
+
+Please provide a structured analysis covering:
+1. **5X Thesis**: What is the specific path to a 5x return? What needs to go right?
+2. **Key Catalysts**: What are the 2-3 most important catalysts that could drive 5x growth?
+3. **Risk Factors**: What are the key risks that could prevent 5x returns?
+4. **Industry Context**: How does this company fit into the broader Fintech landscape?
+5. **Verdict**: Your overall assessment with a confidence level (High/Medium/Low)
+
+Keep the analysis concise but insightful. Focus on actionable intelligence.`,
+        },
+      ],
+      thinking: { type: 'disabled' },
+    });
+
+    const aiAnalysis = completion.choices[0]?.message?.content || 'Analysis unavailable';
+
+    await db.stock.update({
+      where: { ticker: ticker.toUpperCase() },
+      data: {
+        aiAnalysis,
+        lastAnalyzed: new Date(),
+      },
+    });
+
+    return NextResponse.json({ analysis: aiAnalysis, ticker: ticker.toUpperCase() });
+  } catch (error) {
+    console.error('Error analyzing stock:', error);
+    return NextResponse.json({ error: 'Failed to analyze stock' }, { status: 500 });
+  }
+}

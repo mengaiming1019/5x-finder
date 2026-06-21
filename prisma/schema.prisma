@@ -1,0 +1,53 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Stock {
+  id          String   @id @default(cuid())
+  ticker      String   @unique
+  name        String
+  sector      String
+  subSector   String
+  marketCap   String
+  price       String
+  description String
+  logoUrl     String?
+  website     String?
+
+  // Factor Scores (0-100)
+  revenueGrowth      Int
+  marketOpportunity  Int
+  competitiveMoat    Int
+  profitabilityPath  Int
+  valuation          Int
+  industryKnowledge  Int
+
+  // Composite
+  fiveXScore         Int
+
+  // AI Analysis
+  aiAnalysis    String?
+  lastAnalyzed  DateTime?
+
+  // News (JSON string)
+  latestNews    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model FactorWeight {
+  id                String @id @default(cuid())
+  revenueGrowth     Float  @default(0.20)
+  marketOpportunity Float  @default(0.20)
+  competitiveMoat   Float  @default(0.20)
+  profitabilityPath Float  @default(0.15)
+  valuation         Float  @default(0.15)
+  industryKnowledge Float  @default(0.10)
+  updatedAt         DateTime @updatedAt
+}
