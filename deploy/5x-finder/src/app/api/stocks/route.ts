@@ -1,12 +1,14 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 
-// Auto-seed: populate database if empty (no terminal commands needed on Vercel)
+// Auto-seed: populate database and ensure financial metrics are up-to-date
 async function ensureSeeded() {
   const count = await getDb().stock.count();
-  if (count > 0) return;
-
-  console.log('🌱 Database is empty, auto-seeding...');
+  if (count === 0) {
+    console.log('🌱 Database is empty, auto-seeding...');
+  } else {
+    console.log('🔄 Updating stock data with latest financial metrics...');
+  }
 
   const FINTECH_STOCKS = [
     { ticker: "SQ", name: "Block, Inc.", sector: "Payments", subSector: "Point-of-Sale & Digital Payments", marketCap: "$44.5B", price: "$74.78", description: "Block (formerly Square) operates Cash App and Square POS ecosystem. Cash App has 57M+ monthly active users with growing Bitcoin and banking services.", website: "https://block.xyz", revenueGrowth: 62, marketOpportunity: 78, competitiveMoat: 68, profitabilityPath: 72, valuation: 70, executionCapabilities: 72, innovationCulture: 80, fundingStrength: 78, customerStickiness: 70, monetizationModel: 68, peRatio: 62.5, pegRatio: 1.8, evSales: 5.2, evEbitda: 45.0 },
