@@ -79,6 +79,39 @@ Stage Summary:
 ---
 Task ID: 4
 Agent: Main Agent
+Task: Fix crash, update Adyen price, add 10 new stocks
+
+Work Log:
+- Diagnosed crash: dev server background process killed by sandbox (kata-agent drop_caches)
+- Added robust 3-retry fetch mechanism with increasing delay (1.5s, 3s) for client-side data loading
+- Fixed loading state not being set to false on retry failure
+- Updated Adyen price from incorrect €1,620 to correct €875.80 via web search
+- Added 10 new stocks with real-time prices and curated factor scores:
+  - BLSH (Bullish): $24.10 - Institutional crypto exchange
+  - KLAR (Klarna): $18.84 - Europe's largest BNPL provider
+  - CRCL (Circle): $80.23 - USDC stablecoin issuer, score 75 (Top 5!)
+  - PAYP (PayPay): $21.29 - Japan's largest mobile payment platform
+  - BILL (BILL Holdings): $32.47 - SMB financial automation
+  - SE (Sea Limited): $91.28 - Southeast Asia digital ecosystem (Shopee/SeaMoney), score 75
+  - RIOT (Riot Platforms): $28.10 - Bitcoin mining & AI infrastructure
+  - MARA (MARA Holdings): $14.22 - Largest BTC miner by hash rate
+  - MSTR (Strategy/MicroStrategy): $118.50 - Largest corporate BTC holder
+  - IREN (IREN Ltd.): $59.96 - BTC mining pivoting to AI compute
+- Added 'Digital Infrastructure' sector color to frontend
+- Force-reset DB, re-seeded with 26 stocks
+- Lint passes, no errors
+- Verified via Agent Browser: page loads, data shows 26 stocks, Adyen €875.80, zero console errors
+
+Stage Summary:
+- 26 stocks total (16 original + 10 new)
+- Adyen price corrected to €875.80
+- New top 5: NU (80), MELI (80), ADYEY (77), CRCL (75), SE (75)
+- Robust retry fetch mechanism for reliability
+- App fully verified working via Agent Browser
+
+---
+Task ID: 4
+Agent: Main Agent
 Task: Fix app, update Adyen price, add 7 new stocks (BLSH, KLAR, CRCL, PAYP, BTGO, BILL, SE)
 
 Work Log:

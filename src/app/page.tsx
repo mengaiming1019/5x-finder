@@ -105,6 +105,7 @@ const SECTOR_COLORS: Record<string, string> = {
   'Insurtech': '#f59e0b', 'Commerce': '#ef4444', 'Crypto': '#06b6d4',
   'Trading': '#ec4899', 'Enterprise AI': '#f97316', 'Automation': '#14b8a6',
   'Commerce & Fintech': '#6366f1', 'Fintech SaaS': '#a855f7',
+  'Digital Infrastructure': '#78716c',
 };
 
 const DEFAULT_WEIGHTS_LOCAL: Record<string, number> = {
@@ -136,38 +137,31 @@ export default function StockPickerPage() {
   const [localWeights, setLocalWeights] = useState<Record<string, number>>({ ...DEFAULT_WEIGHTS_LOCAL });
 
   const fetchStocks = useCallback(async () => {
-    try {
-      const res = await fetch('/api/stocks');
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      setStocks(data.stocks || []);
-      if (data.weights) {
-        setWeights(data.weights);
-        const lw: Record<string, number> = {};
-        for (const f of ALL_FACTORS) { lw[f.key] = Math.round((data.weights as Record<string, number>)[f.key] * 100); }
-        setLocalWeights(lw);
-      }
-    } catch (err) {
-      console.error('Failed to fetch stocks:', err);
-      // Retry once after a delay
-      setTimeout(async () => {
-        try {
-          const res = await fetch('/api/stocks');
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          const data = await res.json();
-          setStocks(data.stocks || []);
-          if (data.weights) {
-            setWeights(data.weights);
-            const lw: Record<string, number> = {};
-            for (const f of ALL_FACTORS) { lw[f.key] = Math.round((data.weights as Record<string, number>)[f.key] * 100); }
-            setLocalWeights(lw);
-          }
-        } catch {
+    // Try up to 3 times with increasing delay
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        if (attempt > 0) {
+          await new Promise(r => setTimeout(r, 1500 * attempt));
+        }
+        const res = await fetch('/api/stocks');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        setStocks(data.stocks || []);
+        if (data.weights) {
+          setWeights(data.weights);
+          const lw: Record<string, number> = {};
+          for (const f of ALL_FACTORS) { lw[f.key] = Math.round((data.weights as Record<string, number>)[f.key] * 100); }
+          setLocalWeights(lw);
+        }
+        setLoading(false);
+        return; // success
+      } catch (err) {
+        console.error(`Fetch attempt ${attempt + 1} failed:`, err);
+        if (attempt === 2) {
+          setLoading(false);
           toast.error('Failed to load stock data. Please refresh.');
         }
-      }, 2000);
-    } finally {
-      setLoading(false);
+      }
     }
   }, []);
 
