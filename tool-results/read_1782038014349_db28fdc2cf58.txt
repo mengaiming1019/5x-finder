@@ -1,0 +1,475 @@
+     1→     1→'use client';
+     2→     2→
+     3→     3→import { useState, useEffect, useCallback } from 'react';
+     4→     4→import { motion } from 'framer-motion';
+     5→     5→import {
+     6→     6→  TrendingUp, Search, Brain, BarChart3, Target, ShieldCheck,
+     7→     7→  DollarSign, Eye, Sparkles, Globe, ChevronUp, ChevronDown,
+     8→     8→  Settings2, Loader2, Star, CheckCircle2, Flame, Zap, RefreshCw,
+     9→     9→  Rocket, Lightbulb, Wallet, Users, Layers,
+    10→    10→} from 'lucide-react';
+    11→    11→import {
+    12→    12→  Card, CardContent, CardDescription, CardHeader, CardTitle,
+    13→    13→} from '@/components/ui/card';
+    14→    14→import { Badge } from '@/components/ui/badge';
+    15→    15→import { Button } from '@/components/ui/button';
+    16→    16→import { Progress } from '@/components/ui/progress';
+    17→    17→import { Slider } from '@/components/ui/slider';
+    18→    18→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+    19→    19→import { Separator } from '@/components/ui/separator';
+    20→    20→import {
+    21→    21→  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
+    22→    22→} from '@/components/ui/dialog';
+    23→    23→import {
+    24→    24→  RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
+    25→    25→  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+    26→    26→  PieChart, Pie, Cell,
+    27→    27→} from 'recharts';
+    28→    28→import ReactMarkdown from 'react-markdown';
+    29→    29→import { toast } from 'sonner';
+    30→    30→
+    31→    31→// ─── Types ───────────────────────────────────────────────────────────────────
+    32→    32→
+    33→    33→interface Stock {
+    34→    34→  id: string;
+    35→    35→  ticker: string;
+    36→    36→  name: string;
+    37→    37→  sector: string;
+    38→    38→  subSector: string;
+    39→    39→  marketCap: string;
+    40→    40→  price: string;
+    41→    41→  description: string;
+    42→    42→  website: string | null;
+    43→    43→  revenueGrowth: number;
+    44→    44→  marketOpportunity: number;
+    45→    45→  competitiveMoat: number;
+    46→    46→  profitabilityPath: number;
+    47→    47→  valuation: number;
+    48→    48→  executionCapabilities: number;
+    49→    49→  innovationCulture: number;
+    50→    50→  fundingStrength: number;
+    51→    51→  customerStickiness: number;
+    52→    52→  monetizationModel: number;
+    53→    53→  fiveXScore: number;
+    54→    54→  aiAnalysis: string | null;
+    55→    55→  lastAnalyzed: string | null;
+    56→    56→  latestNews: string | null;
+    57→    57→}
+    58→    58→
+    59→    59→interface FactorWeights {
+    60→    60→  id: string;
+    61→    61→  revenueGrowth: number;
+    62→    62→  marketOpportunity: number;
+    63→    63→  competitiveMoat: number;
+    64→    64→  profitabilityPath: number;
+    65→    65→  valuation: number;
+    66→    66→  executionCapabilities: number;
+    67→    67→  innovationCulture: number;
+    68→    68→  fundingStrength: number;
+    69→    69→  customerStickiness: number;
+    70→    70→  monetizationModel: number;
+    71→    71→}
+    72→    72→
+    73→    73→interface NewsItem { title: string; snippet: string; url: string; date: string; source: string; }
+    74→    74→
+    75→    75→type SortField = keyof Pick<Stock,
+    76→    76→  'fiveXScore' | 'revenueGrowth' | 'marketOpportunity' | 'competitiveMoat' |
+    77→    77→  'profitabilityPath' | 'valuation' | 'executionCapabilities' | 'innovationCulture' |
+    78→    78→  'fundingStrength' | 'customerStickiness' | 'monetizationModel' | 'name' | 'ticker'
+    79→    79→>;
+    80→    80→type SortDir = 'asc' | 'desc';
+    81→    81→
+    82→    82→// ─── Factor Config ───────────────────────────────────────────────────────────
+    83→    83→
+    84→    84→const QUANT_FACTORS = [
+    85→    85→  { key: 'revenueGrowth' as const, label: 'Revenue Growth', icon: TrendingUp, color: '#10b981', desc: 'Revenue growth momentum & trajectory' },
+    86→    86→  { key: 'marketOpportunity' as const, label: 'Market Opportunity', icon: Globe, color: '#3b82f6', desc: 'TAM/SAM size & penetration potential' },
+    87→    87→  { key: 'competitiveMoat' as const, label: 'Competitive Moat', icon: ShieldCheck, color: '#8b5cf6', desc: 'Durability of competitive advantage' },
+    88→    88→  { key: 'profitabilityPath' as const, label: 'Profitability Path', icon: DollarSign, color: '#f59e0b', desc: 'Clarity of path to profitability' },
+    89→    89→  { key: 'valuation' as const, label: 'Valuation', icon: Target, color: '#ef4444', desc: 'Entry point attractiveness' },
+    90→    90→];
+    91→    91→
+    92→    92→const QUAL_FACTORS = [
+    93→    93→  { key: 'executionCapabilities' as const, label: 'Execution Capabilities', icon: Rocket, color: '#e11d48', desc: 'Can the leadership team deliver? Track record, strategic clarity, and operational discipline' },
+    94→    94→  { key: 'innovationCulture' as const, label: 'Innovation Culture', icon: Lightbulb, color: '#7c3aed', desc: 'Does the company foster the innovation needed for hypergrowth? R&D velocity, talent density, product iteration speed' },
+    95→    95→  { key: 'fundingStrength' as const, label: 'Funding Strength', icon: Wallet, color: '#0ea5e9', desc: 'Financial resources & capital allocation skills. Cash runway, access to capital, and discipline in spending' },
+    96→    96→  { key: 'customerStickiness' as const, label: 'Customer Stickiness', icon: Users, color: '#059669', desc: 'Depth of customer relationship. Ecosystem lock-in, switching costs, NPS, and retention metrics' },
+    97→    97→  { key: 'monetizationModel' as const, label: 'Monetization Model', icon: Layers, color: '#d97706', desc: 'Scalability & defensibility of business model. Unit economics improvement, pricing power, and revenue diversification' },
+    98→    98→];
+    99→    99→
+   100→   100→const ALL_FACTORS = [...QUANT_FACTORS, ...QUAL_FACTORS];
+   101→   101→
+   102→   102→const SECTOR_COLORS: Record<string, string> = {
+   103→   103→  'Payments': '#3b82f6', 'Lending': '#10b981', 'Digital Banking': '#8b5cf6',
+   104→   104→  'Insurtech': '#f59e0b', 'Commerce': '#ef4444', 'Crypto': '#06b6d4',
+   105→   105→  'Trading': '#ec4899', 'Enterprise AI': '#f97316', 'Automation': '#14b8a6',
+   106→   106→  'Commerce & Fintech': '#6366f1', 'Fintech SaaS': '#a855f7',
+   107→   107→  'Digital Infrastructure': '#78716c',
+   108→   108→};
+   109→   109→
+   110→   110→const DEFAULT_WEIGHTS_LOCAL: Record<string, number> = {
+   111→   111→  revenueGrowth: 15, marketOpportunity: 15, competitiveMoat: 15, profitabilityPath: 10, valuation: 10,
+   112→   112→  executionCapabilities: 10, innovationCulture: 8, fundingStrength: 7, customerStickiness: 5, monetizationModel: 5,
+   113→   113→};
+   114→   114→
+   115→   115→// ─── Helpers ─────────────────────────────────────────────────────────────────
+   116→   116→
+   117→   117→function getScoreColor(s: number) { return s >= 75 ? 'text-emerald-600' : s >= 60 ? 'text-amber-600' : s >= 45 ? 'text-orange-600' : 'text-red-600'; }
+   118→   118→function getScoreBg(s: number) { return s >= 75 ? 'bg-emerald-50 border-emerald-200' : s >= 60 ? 'bg-amber-50 border-amber-200' : s >= 45 ? 'bg-orange-50 border-orange-200' : 'bg-red-50 border-red-200'; }
+   119→   119→function getScoreBadge(s: number): 'default' | 'secondary' | 'destructive' | 'outline' { return s >= 75 ? 'default' : s >= 60 ? 'secondary' : 'destructive'; }
+   120→   120→
+   121→   121→// ─── Main Page ───────────────────────────────────────────────────────────────
+   122→   122→
+   123→   123→export default function StockPickerPage() {
+   124→   124→  const [stocks, setStocks] = useState<Stock[]>([]);
+   125→   125→  const [weights, setWeights] = useState<FactorWeights | null>(null);
+   126→   126→  const [loading, setLoading] = useState(true);
+   127→   127→  const [fetchError, setFetchError] = useState(false);
+   128→   128→  const [selectedStock, setSelectedStock] = useState<Stock | null>(null);
+   129→   129→  const [detailOpen, setDetailOpen] = useState(false);
+   130→   130→  const [analyzeLoading, setAnalyzeLoading] = useState(false);
+   131→   131→  const [newsLoading, setNewsLoading] = useState(false);
+   132→   132→  const [weightsOpen, setWeightsOpen] = useState(false);
+   133→   133→  const [sortField, setSortField] = useState<SortField>('fiveXScore');
+   134→   134→  const [sortDir, setSortDir] = useState<SortDir>('desc');
+   135→   135→  const [searchQuery, setSearchQuery] = useState('');
+   136→   136→  const [sectorFilter, setSectorFilter] = useState<string>('all');
+   137→   137→  const [localWeights, setLocalWeights] = useState<Record<string, number>>({ ...DEFAULT_WEIGHTS_LOCAL });
+   138→   138→
+   139→   139→  const fetchStocks = useCallback(async () => {
+   140→   140→    setLoading(true);
+   141→   141→    setFetchError(false);
+   142→   142→    // Try up to 5 times with increasing delay
+   143→   143→    for (let attempt = 0; attempt < 5; attempt++) {
+   144→   144→      try {
+   145→   145→        if (attempt > 0) {
+   146→   146→          await new Promise(r => setTimeout(r, 2000 * attempt));
+   147→   147→        }
+   148→   148→        const res = await fetch('/api/stocks');
+   149→   149→        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+   150→   150→        const data = await res.json();
+   151→   151→        setStocks(data.stocks || []);
+   152→   152→        if (data.weights) {
+   153→   153→          setWeights(data.weights);
+   154→   154→          const lw: Record<string, number> = {};
+   155→   155→          for (const f of ALL_FACTORS) { lw[f.key] = Math.round((data.weights as Record<string, number>)[f.key] * 100); }
+   156→   156→          setLocalWeights(lw);
+   157→   157→        }
+   158→   158→        setLoading(false);
+   159→   159→        setFetchError(false);
+   160→   160→        return; // success
+   161→   161→      } catch (err) {
+   162→   162→        console.error(`Fetch attempt ${attempt + 1} failed:`, err);
+   163→   163→        if (attempt === 4) {
+   164→   164→          setLoading(false);
+   165→   165→          setFetchError(true);
+   166→   166→        }
+   167→   167→      }
+   168→   168→    }
+   169→   169→  }, []);
+   170→   170→
+   171→   171→  useEffect(() => { fetchStocks(); }, [fetchStocks]);
+   172→   172→
+   173→   173→  // Auto-retry every 8 seconds when fetch has failed
+   174→   174→  useEffect(() => {
+   175→   175→    if (!fetchError) return;
+   176→   176→    const interval = setInterval(() => { fetchStocks(); }, 8000);
+   177→   177→    return () => clearInterval(interval);
+   178→   178→  }, [fetchError, fetchStocks]);
+   179→   179→
+   180→   180→  const handleStockClick = (stock: Stock) => { setSelectedStock(stock); setDetailOpen(true); };
+   181→   181→
+   182→   182→  const handleAnalyze = async (ticker: string) => {
+   183→   183→    setAnalyzeLoading(true);
+   184→   184→    try {
+   185→   185→      const res = await fetch(`/api/stocks/${ticker}/analyze`, { method: 'POST' });
+   186→   186→      const data = await res.json();
+   187→   187→      if (data.analysis) {
+   188→   188→        toast.success(`AI analysis complete for ${ticker}`);
+   189→   189→        await fetchStocks();
+   190→   190→        const updated = stocks.find(s => s.ticker === ticker);
+   191→   191→        if (updated) setSelectedStock({ ...updated, aiAnalysis: data.analysis, lastAnalyzed: new Date().toISOString() });
+   192→   192→      } else { toast.error(data.error || 'Analysis failed'); }
+   193→   193→    } catch { toast.error('Failed to run AI analysis'); }
+   194→   194→    finally { setAnalyzeLoading(false); }
+   195→   195→  };
+   196→   196→
+   197→   197→  const handleFetchNews = async (ticker: string) => {
+   198→   198→    setNewsLoading(true);
+   199→   199→    try {
+   200→   200→      const res = await fetch(`/api/stocks/${ticker}/news`, { method: 'POST' });
+   201→   201→      const data = await res.json();
+   202→   202→      if (data.news) {
+   203→   203→        toast.success(`Latest news loaded for ${ticker}`);
+   204→   204→        await fetchStocks();
+   205→   205→        const updated = stocks.find(s => s.ticker === ticker);
+   206→   206→        if (updated) setSelectedStock({ ...updated, latestNews: JSON.stringify(data.news) });
+   207→   207→      } else { toast.error(data.error || 'News fetch failed'); }
+   208→   208→    } catch { toast.error('Failed to fetch news'); }
+   209→   209→    finally { setNewsLoading(false); }
+   210→   210→  };
+   211→   211→
+   212→   212→  const handleSaveWeights = async () => {
+   213→   213→    const total = Object.values(localWeights).reduce((a, b) => a + b, 0);
+   214→   214→    if (Math.abs(total - 100) > 1) { toast.error(`Weights must sum to 100%. Currently: ${total}%`); return; }
+   215→   215→    try {
+   216→   216→      const body: Record<string, number> = {};
+   217→   217→      for (const f of ALL_FACTORS) { body[f.key] = localWeights[f.key] / 100; }
+   218→   218→      const res = await fetch('/api/weights', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+   219→   219→      const data = await res.json();
+   220→   220→      if (data.weights) { toast.success('Factor weights updated! Scores recalculated.'); setWeightsOpen(false); await fetchStocks(); }
+   221→   221→      else { toast.error(data.error || 'Failed to update weights'); }
+   222→   222→    } catch { toast.error('Failed to update weights'); }
+   223→   223→  };
+   224→   224→
+   225→   225→  const handleSort = (field: SortField) => {
+   226→   226→    if (sortField === field) setSortDir(p => p === 'asc' ? 'desc' : 'asc');
+   227→   227→    else { setSortField(field); setSortDir('desc'); }
+   228→   228→  };
+   229→   229→  const SortIcon = ({ field }: { field: SortField }) => sortField !== field ? null : sortDir === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />;
+   230→   230→
+   231→   231→  const filteredStocks = stocks
+   232→   232→    .filter(s => {
+   233→   233→      const q = searchQuery.toLowerCase();
+   234→   234→      const ms = !q || s.name.toLowerCase().includes(q) || s.ticker.toLowerCase().includes(q) || s.subSector.toLowerCase().includes(q);
+   235→   235→      return ms && (sectorFilter === 'all' || s.sector === sectorFilter);
+   236→   236→    })
+   237→   237→    .sort((a, b) => {
+   238→   238→      const aV = a[sortField], bV = b[sortField];
+   239→   239→      if (typeof aV === 'string' && typeof bV === 'string') return sortDir === 'asc' ? aV.localeCompare(bV) : bV.localeCompare(aV);
+   240→   240→      return sortDir === 'asc' ? (aV as number) - (bV as number) : (bV as number) - (aV as number);
+   241→   241→    });
+   242→   242→
+   243→   243→  const topPicks = [...stocks].sort((a, b) => b.fiveXScore - a.fiveXScore).slice(0, 3);
+   244→   244→  const sectors = [...new Set(stocks.map(s => s.sector))];
+   245→   245→  const sectorData = sectors.map(sector => ({ name: sector, value: stocks.filter(s => s.sector === sector).length, color: SECTOR_COLORS[sector] || '#94a3b8' }));
+   246→   246→  const getRadarData = (stock: Stock) => ALL_FACTORS.map(f => ({ factor: f.label.length > 14 ? f.label.slice(0, 12) + '…' : f.label, value: stock[f.key], fullMark: 100 }));
+   247→   247→  const quantAvg = QUANT_FACTORS.map(f => ({ factor: f.label, value: Math.round(stocks.reduce((s, st) => s + st[f.key], 0) / stocks.length), color: f.color }));
+   248→   248→  const qualAvg = QUAL_FACTORS.map(f => ({ factor: f.label, value: Math.round(stocks.reduce((s, st) => s + st[f.key], 0) / stocks.length), color: f.color }));
+   249→   249→  const top10Data = [...stocks].sort((a, b) => b.fiveXScore - a.fiveXScore).slice(0, 10).map(s => ({ name: s.ticker, score: s.fiveXScore, fill: s.fiveXScore >= 75 ? '#10b981' : s.fiveXScore >= 60 ? '#f59e0b' : '#ef4444' }));
+   250→   250→  const getNewsItems = (stock: Stock): NewsItem[] => { if (!stock.latestNews) return []; try { return JSON.parse(stock.latestNews); } catch { return []; } };
+   251→   251→
+   252→   252→  if (loading) {
+   253→   253→    return (
+   254→   254→      <div className="min-h-screen flex flex-col items-center justify-center bg-background">
+   255→   255→        <div className="flex items-center gap-3 mb-4"><Flame className="w-8 h-8 text-orange-500 animate-pulse" /><span className="text-2xl font-bold tracking-tight">5X Finder</span></div>
+   256→   256→        <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="w-4 h-4 animate-spin" /><span>Loading Fintech stock universe…</span></div>
+   257→   257→      </div>
+   258→   258→    );
+   259→   259→  }
+   260→   260→
+   261→   261→  return (
+   262→   262→    <div className="min-h-screen flex flex-col bg-background">
+   263→   263→      {/* Header */}
+   264→   264→      <header className="border-b bg-card/80 backdrop-blur-sm sticky top-0 z-40">
+   265→   265→        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+   266→   266→          <div className="flex items-center gap-3">
+   267→   267→            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center"><Flame className="w-5 h-5 text-white" /></div>
+   268→   268→            <div><h1 className="text-lg font-bold tracking-tight leading-tight">5X Finder</h1><p className="text-xs text-muted-foreground leading-tight">AI-Powered Fintech Stock Picking · 10-Factor Model</p></div>
+   269→   269→          </div>
+   270→   270→          <div className="flex items-center gap-2">
+   271→   271→            <div className="relative hidden sm:block"><Search className="absolute left-2.5 top-2.5 w-4 h-4 text-muted-foreground" /><input type="text" placeholder="Search stocks…" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-8 pr-3 py-1.5 text-sm bg-muted/50 border rounded-md w-52 focus:outline-none focus:ring-1 focus:ring-ring" /></div>
+   272→   272→            <Button variant="outline" size="sm" onClick={() => setWeightsOpen(true)}><Settings2 className="w-4 h-4 mr-1.5" />Weights</Button>
+   273→   273→            <Button variant="outline" size="sm" onClick={fetchStocks}><RefreshCw className="w-3.5 h-3.5" /></Button>
+   274→   274→          </div>
+   275→   275→        </div>
+   276→   276→      </header>
+   277→   277→
+   278→   278→      <main className="flex-1 max-w-[1440px] w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
+   279→   279→        {/* Error state with retry */}
+   280→   280→        {fetchError && !loading && (
+   281→   281→          <Card className="border-destructive/50 bg-destructive/5">
+   282→   282→            <CardContent className="p-6 text-center space-y-3">
+   283→   283→              <div className="flex justify-center"><Zap className="w-8 h-8 text-destructive" /></div>
+   284→   284→              <h3 className="font-semibold text-lg">Unable to load stock data</h3>
+   285→   285→              <p className="text-muted-foreground text-sm">The server may be starting up. Auto-retrying every 8 seconds…</p>
+   286→   286→              <Button onClick={fetchStocks} variant="outline" size="sm"><RefreshCw className="w-4 h-4 mr-2" />Retry Now</Button>
+   287→   287→            </CardContent>
+   288→   288→          </Card>
+   289→   289→        )}
+   290→   290→        {/* Loading state */}
+   291→   291→        {loading && !fetchError && (
+   292→   292→          <Card>
+   293→   293→            <CardContent className="p-6 text-center space-y-3">
+   294→   294→              <div className="flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
+   295→   295→              <h3 className="font-semibold text-lg">Loading stock data…</h3>
+   296→   296→              <p className="text-muted-foreground text-sm">Connecting to the 5X Finder engine</p>
+   297→   297→            </CardContent>
+   298→   298→          </Card>
+   299→   299→        )}
+   300→   300→        {!loading && !fetchError && stocks.length > 0 && (
+   301→   301→        <>
+   302→   302→        {/* Mobile search */}
+   303→   303→        <div className="sm:hidden"><div className="relative"><Search className="absolute left-2.5 top-2.5 w-4 h-4 text-muted-foreground" /><input type="text" placeholder="Search stocks, sectors…" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-8 pr-3 py-2 text-sm bg-muted/50 border rounded-md w-full focus:outline-none focus:ring-1 focus:ring-ring" /></div></div>
+   304→   304→
+   305→   305→        {/* Top Picks */}
+   306→   306→        <section>
+   307→   307→          <div className="flex items-center gap-2 mb-3"><Star className="w-5 h-5 text-amber-500" /><h2 className="text-lg font-semibold">Top 5X Candidates</h2></div>
+   308→   308→          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+   309→   309→            {topPicks.map((stock, i) => (
+   310→   310→              <motion.div key={stock.ticker} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
+   311→   311→                <Card className={`cursor-pointer hover:shadow-md transition-shadow border ${getScoreBg(stock.fiveXScore)}`} onClick={() => handleStockClick(stock)}>
+   312→   312→                  <CardContent className="p-4">
+   313→   313→                    <div className="flex items-start justify-between mb-2">
+   314→   314→                      <div><div className="flex items-center gap-2"><Badge variant="outline" className="font-mono text-xs">#{i + 1}</Badge><span className="font-mono font-bold text-sm">{stock.ticker}</span></div><p className="text-sm font-medium mt-1">{stock.name}</p></div>
+   315→   315→                      <div className={`text-2xl font-bold ${getScoreColor(stock.fiveXScore)}`}>{stock.fiveXScore}</div>
+   316→   316→                    </div>
+   317→   317→                    <div className="flex items-center gap-3 text-xs text-muted-foreground mb-3"><span>{stock.sector}</span><span>·</span><span>{stock.marketCap}</span><span>·</span><span className="font-mono">{stock.price}</span></div>
+   318→   318→                    <div className="space-y-1.5">
+   319→   319→                      {QUANT_FACTORS.slice(0, 3).map(f => (<div key={f.key} className="flex items-center gap-2"><span className="text-xs text-muted-foreground w-28 shrink-0">{f.label}</span><Progress value={stock[f.key]} className="h-1.5 flex-1" /><span className="text-xs font-mono w-6 text-right">{stock[f.key]}</span></div>))}
+   320→   320→                    </div>
+   321→   321→                    <Separator className="my-2" />
+   322→   322→                    <div className="space-y-1.5">
+   323→   323→                      {QUAL_FACTORS.slice(0, 2).map(f => (<div key={f.key} className="flex items-center gap-2"><span className="text-xs text-muted-foreground w-28 shrink-0">{f.label}</span><Progress value={stock[f.key]} className="h-1.5 flex-1" /><span className="text-xs font-mono w-6 text-right">{stock[f.key]}</span></div>))}
+   324→   324→                    </div>
+   325→   325→                  </CardContent>
+   326→   326→                </Card>
+   327→   327→              </motion.div>
+   328→   328→            ))}
+   329→   329→          </div>
+   330→   330→        </section>
+   331→   331→
+   332→   332→        {/* Charts Row */}
+   333→   333→        <section><div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+   334→   334→          <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-semibold flex items-center gap-2"><BarChart3 className="w-4 h-4 text-muted-foreground" />5X Score Rankings (Top 10)</CardTitle></CardHeader>
+   335→   335→            <CardContent className="pt-0"><ResponsiveContainer width="100%" height={260}><BarChart data={top10Data} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}><CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" /><XAxis dataKey="name" tick={{ fontSize: 11, fontFamily: 'monospace' }} /><YAxis domain={[0, 100]} tick={{ fontSize: 11 }} /><Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e2e8f0' }} formatter={(v: number) => [`${v}`, '5X Score']} /><Bar dataKey="score" radius={[4, 4, 0, 0]}>{top10Data.map((e, i) => <Cell key={i} fill={e.fill} />)}</Bar></BarChart></ResponsiveContainer></CardContent></Card>
+   336→   336→          <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-semibold flex items-center gap-2"><Eye className="w-4 h-4 text-muted-foreground" />Sector Distribution</CardTitle></CardHeader>
+   337→   337→            <CardContent className="pt-0"><div className="flex items-center"><ResponsiveContainer width="60%" height={240}><PieChart><Pie data={sectorData} cx="50%" cy="50%" innerRadius={55} outerRadius={90} paddingAngle={2} dataKey="value">{sectorData.map((e, i) => <Cell key={i} fill={e.color} />)}</Pie><Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(v: number, n: string) => [`${v} stocks`, n]} /></PieChart></ResponsiveContainer>
+   338→   338→              <div className="space-y-2 flex-1">{sectorData.map(s => (<div key={s.name} className="flex items-center gap-2 text-xs"><div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: s.color }} /><span className="text-muted-foreground truncate">{s.name}</span><span className="font-mono ml-auto">{s.value}</span></div>))}</div></div></CardContent></Card>
+   339→   339→        </div></section>
+   340→   340→
+   341→   341→        {/* Average Factor Scores */}
+   342→   342→        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+   343→   343→          <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-semibold flex items-center gap-2"><BarChart3 className="w-4 h-4 text-blue-500" />Quantitative Factors — Universe Avg</CardTitle><CardDescription className="text-xs">Across {stocks.length} Fintech stocks</CardDescription></CardHeader>
+   344→   344→            <CardContent className="pt-0"><div className="grid grid-cols-2 sm:grid-cols-3 gap-4">{quantAvg.map(f => { const cfg = QUANT_FACTORS.find(c => c.label === f.factor)!; const Icon = cfg.icon; return (<div key={f.factor} className="text-center space-y-1"><Icon className="w-5 h-5 mx-auto" style={{ color: f.color }} /><p className="text-[11px] text-muted-foreground">{f.factor}</p><p className={`text-lg font-bold ${getScoreColor(f.value)}`}>{f.value}</p><Progress value={f.value} className="h-1.5" /></div>); })}</div></CardContent></Card>
+   345→   345→          <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-semibold flex items-center gap-2"><Lightbulb className="w-4 h-4 text-violet-500" />Qualitative Factors — Universe Avg</CardTitle><CardDescription className="text-xs">Across {stocks.length} Fintech stocks</CardDescription></CardHeader>
+   346→   346→            <CardContent className="pt-0"><div className="grid grid-cols-2 sm:grid-cols-3 gap-4">{qualAvg.map(f => { const cfg = QUAL_FACTORS.find(c => c.label === f.factor)!; const Icon = cfg.icon; return (<div key={f.factor} className="text-center space-y-1"><Icon className="w-5 h-5 mx-auto" style={{ color: f.color }} /><p className="text-[11px] text-muted-foreground">{f.factor}</p><p className={`text-lg font-bold ${getScoreColor(f.value)}`}>{f.value}</p><Progress value={f.value} className="h-1.5" /></div>); })}</div></CardContent></Card>
+   347→   347→        </div>
+   348→   348→
+   349→   349→        {/* Sector Filter */}
+   350→   350→        <div className="flex items-center gap-2 flex-wrap">
+   351→   351→          <span className="text-sm font-medium text-muted-foreground">Sector:</span>
+   352→   352→          <button onClick={() => setSectorFilter('all')} className={`px-3 py-1 text-xs rounded-full border transition-colors ${sectorFilter === 'all' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted'}`}>All ({stocks.length})</button>
+   353→   353→          {sectors.map(sector => (<button key={sector} onClick={() => setSectorFilter(sector)} className={`px-3 py-1 text-xs rounded-full border transition-colors ${sectorFilter === sector ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted'}`}>{sector} ({stocks.filter(s => s.sector === sector).length})</button>))}
+   354→   354→        </div>
+   355→   355→
+   356→   356→        {/* Stock Rankings Table */}
+   357→   357→        <Card>
+   358→   358→          <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold flex items-center gap-2"><Zap className="w-4 h-4 text-orange-500" />Stock Rankings</CardTitle><CardDescription className="text-xs mt-1">{filteredStocks.length} stocks · Click any row for detailed analysis</CardDescription></CardHeader>
+   359→   359→          <CardContent className="pt-0">
+   360→   360→            <div className="overflow-x-auto">
+   361→   361→              <table className="w-full text-sm">
+   362→   362→                <thead><tr className="border-b">
+   363→   363→                  <th className="text-left py-2 px-2 font-medium text-muted-foreground cursor-pointer hover:text-foreground" onClick={() => handleSort('ticker')}><div className="flex items-center gap-1">Ticker <SortIcon field="ticker" /></div></th>
+   364→   364→                  <th className="text-left py-2 px-2 font-medium text-muted-foreground cursor-pointer hover:text-foreground hidden sm:table-cell" onClick={() => handleSort('name')}><div className="flex items-center gap-1">Name <SortIcon field="name" /></div></th>
+   365→   365→                  <th className="text-left py-2 px-2 font-medium text-muted-foreground hidden md:table-cell">Sector</th>
+   366→   366→                  <th className="text-right py-2 px-2 font-medium text-muted-foreground hidden lg:table-cell">Mkt Cap</th>
+   367→   367→                  <th className="text-right py-2 px-2 font-medium text-muted-foreground hidden lg:table-cell">Price</th>
+   368→   368→                  {QUANT_FACTORS.map(f => (<th key={f.key} className="text-right py-2 px-1 font-medium text-muted-foreground cursor-pointer hover:text-foreground hidden xl:table-cell" onClick={() => handleSort(f.key)}><div className="flex items-center justify-end gap-0.5"><f.icon className="w-3 h-3" style={{ color: f.color }} /><span className="text-[10px]">{f.label.split(' ')[0].slice(0, 5)}</span><SortIcon field={f.key} /></div></th>))}
+   369→   369→                  {QUAL_FACTORS.map(f => (<th key={f.key} className="text-right py-2 px-1 font-medium text-muted-foreground cursor-pointer hover:text-foreground hidden 2xl:table-cell" onClick={() => handleSort(f.key)}><div className="flex items-center justify-end gap-0.5"><f.icon className="w-3 h-3" style={{ color: f.color }} /><span className="text-[10px]">{f.label.split(' ')[0].slice(0, 5)}</span><SortIcon field={f.key} /></div></th>))}
+   370→   370→                  <th className="text-right py-2 px-2 font-medium text-muted-foreground cursor-pointer hover:text-foreground" onClick={() => handleSort('fiveXScore')}><div className="flex items-center justify-end gap-1"><Flame className="w-3.5 h-3.5 text-orange-500" />5X<SortIcon field="fiveXScore" /></div></th>
+   371→   371→                  <th className="text-center py-2 px-2 font-medium text-muted-foreground">AI</th>
+   372→   372→                </tr></thead>
+   373→   373→                <tbody>{filteredStocks.map((stock, i) => (
+   374→   374→                  <motion.tr key={stock.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.02 }} className="border-b hover:bg-muted/30 cursor-pointer transition-colors" onClick={() => handleStockClick(stock)}>
+   375→   375→                    <td className="py-2.5 px-2"><span className="font-mono font-semibold text-xs">{stock.ticker}</span></td>
+   376→   376→                    <td className="py-2.5 px-2 hidden sm:table-cell"><span className="text-xs">{stock.name}</span></td>
+   377→   377→                    <td className="py-2.5 px-2 hidden md:table-cell"><Badge variant="outline" className="text-[10px] px-1.5 py-0">{stock.sector}</Badge></td>
+   378→   378→                    <td className="py-2.5 px-2 text-right text-xs font-mono hidden lg:table-cell">{stock.marketCap}</td>
+   379→   379→                    <td className="py-2.5 px-2 text-right text-xs font-mono hidden lg:table-cell">{stock.price}</td>
+   380→   380→                    {QUANT_FACTORS.map(f => (<td key={f.key} className="py-2.5 px-1 text-right hidden xl:table-cell"><span className={`text-[11px] font-mono ${getScoreColor(stock[f.key])}`}>{stock[f.key]}</span></td>))}
+   381→   381→                    {QUAL_FACTORS.map(f => (<td key={f.key} className="py-2.5 px-1 text-right hidden 2xl:table-cell"><span className={`text-[11px] font-mono ${getScoreColor(stock[f.key])}`}>{stock[f.key]}</span></td>))}
+   382→   382→                    <td className="py-2.5 px-2 text-right"><span className={`font-bold text-sm ${getScoreColor(stock.fiveXScore)}`}>{stock.fiveXScore}</span></td>
+   383→   383→                    <td className="py-2.5 px-2 text-center">{stock.aiAnalysis ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 inline" /> : <span className="text-xs text-muted-foreground">—</span>}</td>
+   384→   384→                  </motion.tr>
+   385→   385→                ))}</tbody>
+   386→   386→              </table>
+   387→   387→            </div>
+   388→   388→          </CardContent>
+   389→   389→        </Card>
+   390→   390→
+   391→   391→        {/* Methodology */}
+   392→   392→        <Card className="border-dashed">
+   393→   393→          <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold flex items-center gap-2"><Brain className="w-4 h-4 text-muted-foreground" />About the 5X Finder Model — 10-Factor Framework</CardTitle></CardHeader>
+   394→   394→          <CardContent className="pt-0 text-xs text-muted-foreground space-y-3">
+   395→   395→            <p><strong>5X Finder</strong> identifies Fintech stocks with the highest probability of achieving a <strong>5x return within 2 years</strong> using 5 quantitative + 5 qualitative factors, powered by AI analysis.</p>
+   396→   396→            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+   397→   397→              <div><p className="font-semibold text-foreground mb-2">📊 Quantitative Factors</p><div className="space-y-2">{QUANT_FACTORS.map(f => (<div key={f.key} className="flex items-start gap-2"><f.icon className="w-4 h-4 mt-0.5 shrink-0" style={{ color: f.color }} /><div><p className="font-medium text-foreground">{f.label}</p><p className="text-[11px]">{f.desc}</p></div></div>))}</div></div>
+   398→   398→              <div><p className="font-semibold text-foreground mb-2">🧠 Qualitative Factors</p><div className="space-y-2">{QUAL_FACTORS.map(f => (<div key={f.key} className="flex items-start gap-2"><f.icon className="w-4 h-4 mt-0.5 shrink-0" style={{ color: f.color }} /><div><p className="font-medium text-foreground">{f.label}</p><p className="text-[11px]">{f.desc}</p></div></div>))}</div></div>
+   399→   399→            </div>
+   400→   400→            <p className="mt-2">The qualitative factors capture <strong>execution risk, innovation velocity, capital efficiency, customer loyalty, and business model quality</strong> that pure quantitative models miss. Stock prices sourced via live web search.</p>
+   401→   401→          </CardContent>
+   402→   402→        </Card>
+   403→   403→        </>
+   404→   404→        )}
+   405→   405→      </main>
+   406→   406→
+   407→   407→      {/* Footer */}
+   408→   408→      <footer className="mt-auto border-t bg-card/50">
+   409→   409→        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground">
+   410→   410→          <div className="flex items-center gap-2"><Flame className="w-4 h-4 text-orange-500" /><span className="font-medium">5X Finder</span><span>· 10-Factor AI-Powered Fintech Stock Picking</span></div>
+   411→   411→          <span>For informational purposes only. Not financial advice.</span>
+   412→   412→        </div>
+   413→   413→      </footer>
+   414→   414→
+   415→   415→      {/* Stock Detail Dialog */}
+   416→   416→      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+   417→   417→        <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+   418→   418→          {selectedStock && (<>
+   419→   419→            <DialogHeader className="px-6 pt-6 pb-2 shrink-0">
+   420→   420→              <DialogDescription className="sr-only">{selectedStock.name} detailed analysis and factor scores</DialogDescription>
+   421→   421→              <div className="flex items-center justify-between flex-wrap gap-2">
+   422→   422→                <div className="flex items-center gap-3">
+   423→   423→                  <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${getScoreBg(selectedStock.fiveXScore)}`}><span className={`text-xl font-bold ${getScoreColor(selectedStock.fiveXScore)}`}>{selectedStock.fiveXScore}</span></div>
+   424→   424→                  <div><DialogTitle className="flex items-center gap-2"><span className="font-mono">{selectedStock.ticker}</span><Badge variant={getScoreBadge(selectedStock.fiveXScore)}>{selectedStock.fiveXScore >= 75 ? 'High Potential' : selectedStock.fiveXScore >= 60 ? 'Moderate' : 'Speculative'}</Badge></DialogTitle><p className="text-sm text-muted-foreground">{selectedStock.name}</p></div>
+   425→   425→                </div>
+   426→   426→                <div className="flex items-center gap-2">
+   427→   427→                  <Button variant="outline" size="sm" onClick={() => handleFetchNews(selectedStock.ticker)} disabled={newsLoading}>{newsLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Globe className="w-3.5 h-3.5 mr-1" />}News</Button>
+   428→   428→                  <Button size="sm" onClick={() => handleAnalyze(selectedStock.ticker)} disabled={analyzeLoading}>{analyzeLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Sparkles className="w-3.5 h-3.5 mr-1" />}AI Analyze</Button>
+   429→   429→                </div>
+   430→   430→              </div>
+   431→   431→            </DialogHeader>
+   432→   432→            <div className="flex-1 overflow-y-auto px-6"><div className="space-y-4 pb-6">
+   433→   433→              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+   434→   434→                <div className="text-center p-2 rounded-lg bg-muted/50"><p className="text-[11px] text-muted-foreground">Sector</p><p className="text-sm font-medium">{selectedStock.sector}</p></div>
+   435→   435→                <div className="text-center p-2 rounded-lg bg-muted/50"><p className="text-[11px] text-muted-foreground">Market Cap</p><p className="text-sm font-mono font-medium">{selectedStock.marketCap}</p></div>
+   436→   436→                <div className="text-center p-2 rounded-lg bg-muted/50"><p className="text-[11px] text-muted-foreground">Price</p><p className="text-sm font-mono font-medium">{selectedStock.price}</p></div>
+   437→   437→                <div className="text-center p-2 rounded-lg bg-muted/50"><p className="text-[11px] text-muted-foreground">Last Analyzed</p><p className="text-sm font-medium">{selectedStock.lastAnalyzed ? new Date(selectedStock.lastAnalyzed).toLocaleDateString() : 'Never'}</p></div>
+   438→   438→              </div>
+   439→   439→              <p className="text-sm text-muted-foreground">{selectedStock.description}</p>
+   440→   440→              <Tabs defaultValue="factors" className="w-full">
+   441→   441→                <TabsList className="w-full justify-start"><TabsTrigger value="factors" className="text-xs">Radar</TabsTrigger><TabsTrigger value="breakdown" className="text-xs">Breakdown</TabsTrigger><TabsTrigger value="analysis" className="text-xs">AI Analysis {selectedStock.aiAnalysis ? '✓' : ''}</TabsTrigger><TabsTrigger value="news" className="text-xs">News</TabsTrigger></TabsList>
+   442→   442→                <TabsContent value="factors" className="mt-3"><ResponsiveContainer width="100%" height={350}><RadarChart data={getRadarData(selectedStock)}><PolarGrid stroke="#e2e8f0" /><PolarAngleAxis dataKey="factor" tick={{ fontSize: 10 }} /><PolarRadiusAxis domain={[0, 100]} tick={{ fontSize: 9 }} /><Radar name={selectedStock.ticker} dataKey="value" stroke="#f97316" fill="#f97316" fillOpacity={0.2} strokeWidth={2} /></RadarChart></ResponsiveContainer></TabsContent>
+   443→   443→                <TabsContent value="breakdown" className="mt-3 space-y-4">
+   444→   444→                  <div><p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1"><BarChart3 className="w-3.5 h-3.5 text-blue-500" />QUANTITATIVE FACTORS</p><div className="space-y-3">{QUANT_FACTORS.map(f => { const val = selectedStock[f.key]; const w = weights ? ((weights as Record<string, number>)[f.key] * 100).toFixed(0) : '—'; const Icon = f.icon; return (<div key={f.key} className="space-y-1"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><Icon className="w-4 h-4" style={{ color: f.color }} /><span className="text-sm font-medium">{f.label}</span><span className="text-[11px] text-muted-foreground">(W: {w}%)</span></div><span className={`font-mono font-bold ${getScoreColor(val)}`}>{val}/100</span></div><Progress value={val} className="h-2" /><p className="text-[11px] text-muted-foreground">{f.desc}</p></div>); })}</div></div>
+   445→   445→                  <Separator />
+   446→   446→                  <div><p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1"><Lightbulb className="w-3.5 h-3.5 text-violet-500" />QUALITATIVE FACTORS</p><div className="space-y-3">{QUAL_FACTORS.map(f => { const val = selectedStock[f.key]; const w = weights ? ((weights as Record<string, number>)[f.key] * 100).toFixed(0) : '—'; const Icon = f.icon; return (<div key={f.key} className="space-y-1"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><Icon className="w-4 h-4" style={{ color: f.color }} /><span className="text-sm font-medium">{f.label}</span><span className="text-[11px] text-muted-foreground">(W: {w}%)</span></div><span className={`font-mono font-bold ${getScoreColor(val)}`}>{val}/100</span></div><Progress value={val} className="h-2" /><p className="text-[11px] text-muted-foreground">{f.desc}</p></div>); })}</div></div>
+   447→   447→                  <Separator /><div className="flex items-center justify-between pt-1"><span className="font-semibold">Composite 5X Score</span><span className={`text-xl font-bold ${getScoreColor(selectedStock.fiveXScore)}`}>{selectedStock.fiveXScore}</span></div>
+   448→   448→                </TabsContent>
+   449→   449→                <TabsContent value="analysis" className="mt-3">{selectedStock.aiAnalysis ? (<div className="prose prose-sm max-w-none"><ReactMarkdown>{selectedStock.aiAnalysis}</ReactMarkdown></div>) : (<div className="flex flex-col items-center justify-center py-12 text-center"><Brain className="w-10 h-10 text-muted-foreground mb-3" /><p className="text-sm text-muted-foreground mb-3">No AI analysis yet. Run the analysis to get a detailed 5X thesis.</p><Button onClick={() => handleAnalyze(selectedStock.ticker)} disabled={analyzeLoading}>{analyzeLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}Run AI Analysis</Button></div>)}</TabsContent>
+   450→   450→                <TabsContent value="news" className="mt-3">{getNewsItems(selectedStock).length > 0 ? (<div className="space-y-3">{getNewsItems(selectedStock).map((item, i) => (<div key={i} className="p-3 rounded-lg bg-muted/30 space-y-1"><a href={item.url} target="_blank" rel="noopener noreferrer" className="text-sm font-medium hover:underline flex items-center gap-1">{item.title}<Zap className="w-3 h-3 shrink-0" /></a><p className="text-xs text-muted-foreground line-clamp-2">{item.snippet}</p><div className="flex items-center gap-2 text-[11px] text-muted-foreground"><span>{item.source}</span><span>·</span><span>{item.date ? new Date(item.date).toLocaleDateString() : 'N/A'}</span></div></div>))}</div>) : (<div className="flex flex-col items-center justify-center py-12 text-center"><Globe className="w-10 h-10 text-muted-foreground mb-3" /><p className="text-sm text-muted-foreground mb-3">No news yet for {selectedStock.ticker}.</p><Button variant="outline" onClick={() => handleFetchNews(selectedStock.ticker)} disabled={newsLoading}>{newsLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Globe className="w-4 h-4 mr-2" />}Fetch News</Button></div>)}</TabsContent>
+   451→   451→              </Tabs>
+   452→   452→            </div></div>
+   453→   453→          </>)}
+   454→   454→        </DialogContent>
+   455→   455→      </Dialog>
+   456→   456→
+   457→   457→      {/* Weights Dialog */}
+   458→   458→      <Dialog open={weightsOpen} onOpenChange={setWeightsOpen}>
+   459→   459→        <DialogContent className="max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
+   460→   460→          <DialogHeader><DialogTitle className="flex items-center gap-2"><Settings2 className="w-5 h-5" />Adjust Factor Weights</DialogTitle><DialogDescription className="sr-only">Customize factor weights</DialogDescription></DialogHeader>
+   461→   461→          <div className="flex-1 overflow-y-auto -mx-6 px-6 space-y-4 pb-2">
+   462→   462→            <p className="text-xs text-muted-foreground">Customize the weight of each factor. Must sum to 100%.</p>
+   463→   463→            <div><p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1"><BarChart3 className="w-3.5 h-3.5 text-blue-500" />QUANTITATIVE</p><div className="space-y-3">{QUANT_FACTORS.map(f => (<div key={f.key} className="space-y-1.5"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><f.icon className="w-4 h-4" style={{ color: f.color }} /><span className="text-sm">{f.label}</span></div><span className="font-mono text-sm font-medium">{localWeights[f.key] ?? 0}%</span></div><Slider value={[localWeights[f.key] ?? 0]} min={0} max={30} step={1} onValueChange={([v]) => setLocalWeights(prev => ({ ...prev, [f.key]: v }))} /></div>))}</div></div>
+   464→   464→            <Separator />
+   465→   465→            <div><p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1"><Lightbulb className="w-3.5 h-3.5 text-violet-500" />QUALITATIVE</p><div className="space-y-3">{QUAL_FACTORS.map(f => (<div key={f.key} className="space-y-1.5"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><f.icon className="w-4 h-4" style={{ color: f.color }} /><span className="text-sm">{f.label}</span></div><span className="font-mono text-sm font-medium">{localWeights[f.key] ?? 0}%</span></div><Slider value={[localWeights[f.key] ?? 0]} min={0} max={30} step={1} onValueChange={([v]) => setLocalWeights(prev => ({ ...prev, [f.key]: v }))} /></div>))}</div></div>
+   466→   466→            <Separator />
+   467→   467→            <div className="flex items-center justify-between"><span className="text-sm font-medium">Total</span><span className={`font-mono text-sm font-bold ${Math.abs(Object.values(localWeights).reduce((a, b) => a + b, 0) - 100) < 2 ? 'text-emerald-600' : 'text-red-600'}`}>{Object.values(localWeights).reduce((a, b) => a + b, 0)}%</span></div>
+   468→   468→            <div className="flex items-center gap-2"><Button variant="outline" className="flex-1" onClick={() => setLocalWeights({ ...DEFAULT_WEIGHTS_LOCAL })}>Reset Default</Button><Button className="flex-1" onClick={handleSaveWeights}>Save & Recalculate</Button></div>
+   469→   469→          </div>
+   470→   470→        </DialogContent>
+   471→   471→      </Dialog>
+   472→   472→    </div>
+   473→   473→  );
+   474→   474→}
+   475→   475→

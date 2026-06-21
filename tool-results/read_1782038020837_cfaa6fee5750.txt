@@ -1,0 +1,277 @@
+   200→      const res = await fetch(`/api/stocks/${ticker}/news`, { method: 'POST' });
+   201→      const data = await res.json();
+   202→      if (data.news) {
+   203→        toast.success(`Latest news loaded for ${ticker}`);
+   204→        await fetchStocks();
+   205→        const updated = stocks.find(s => s.ticker === ticker);
+   206→        if (updated) setSelectedStock({ ...updated, latestNews: JSON.stringify(data.news) });
+   207→      } else { toast.error(data.error || 'News fetch failed'); }
+   208→    } catch { toast.error('Failed to fetch news'); }
+   209→    finally { setNewsLoading(false); }
+   210→  };
+   211→
+   212→  const handleSaveWeights = async () => {
+   213→    const total = Object.values(localWeights).reduce((a, b) => a + b, 0);
+   214→    if (Math.abs(total - 100) > 1) { toast.error(`Weights must sum to 100%. Currently: ${total}%`); return; }
+   215→    try {
+   216→      const body: Record<string, number> = {};
+   217→      for (const f of ALL_FACTORS) { body[f.key] = localWeights[f.key] / 100; }
+   218→      const res = await fetch('/api/weights', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+   219→      const data = await res.json();
+   220→      if (data.weights) { toast.success('Factor weights updated! Scores recalculated.'); setWeightsOpen(false); await fetchStocks(); }
+   221→      else { toast.error(data.error || 'Failed to update weights'); }
+   222→    } catch { toast.error('Failed to update weights'); }
+   223→  };
+   224→
+   225→  const handleSort = (field: SortField) => {
+   226→    if (sortField === field) setSortDir(p => p === 'asc' ? 'desc' : 'asc');
+   227→    else { setSortField(field); setSortDir('desc'); }
+   228→  };
+   229→  const SortIcon = ({ field }: { field: SortField }) => sortField !== field ? null : sortDir === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />;
+   230→
+   231→  const filteredStocks = stocks
+   232→    .filter(s => {
+   233→      const q = searchQuery.toLowerCase();
+   234→      const ms = !q || s.name.toLowerCase().includes(q) || s.ticker.toLowerCase().includes(q) || s.subSector.toLowerCase().includes(q);
+   235→      return ms && (sectorFilter === 'all' || s.sector === sectorFilter);
+   236→    })
+   237→    .sort((a, b) => {
+   238→      const aV = a[sortField], bV = b[sortField];
+   239→      if (typeof aV === 'string' && typeof bV === 'string') return sortDir === 'asc' ? aV.localeCompare(bV) : bV.localeCompare(aV);
+   240→      return sortDir === 'asc' ? (aV as number) - (bV as number) : (bV as number) - (aV as number);
+   241→    });
+   242→
+   243→  const topPicks = [...stocks].sort((a, b) => b.fiveXScore - a.fiveXScore).slice(0, 3);
+   244→  const sectors = [...new Set(stocks.map(s => s.sector))];
+   245→  const sectorData = sectors.map(sector => ({ name: sector, value: stocks.filter(s => s.sector === sector).length, color: SECTOR_COLORS[sector] || '#94a3b8' }));
+   246→  const getRadarData = (stock: Stock) => ALL_FACTORS.map(f => ({ factor: f.label.length > 14 ? f.label.slice(0, 12) + '…' : f.label, value: stock[f.key], fullMark: 100 }));
+   247→  const quantAvg = QUANT_FACTORS.map(f => ({ factor: f.label, value: Math.round(stocks.reduce((s, st) => s + st[f.key], 0) / stocks.length), color: f.color }));
+   248→  const qualAvg = QUAL_FACTORS.map(f => ({ factor: f.label, value: Math.round(stocks.reduce((s, st) => s + st[f.key], 0) / stocks.length), color: f.color }));
+   249→  const top10Data = [...stocks].sort((a, b) => b.fiveXScore - a.fiveXScore).slice(0, 10).map(s => ({ name: s.ticker, score: s.fiveXScore, fill: s.fiveXScore >= 75 ? '#10b981' : s.fiveXScore >= 60 ? '#f59e0b' : '#ef4444' }));
+   250→  const getNewsItems = (stock: Stock): NewsItem[] => { if (!stock.latestNews) return []; try { return JSON.parse(stock.latestNews); } catch { return []; } };
+   251→
+   252→  if (loading) {
+   253→    return (
+   254→      <div className="min-h-screen flex flex-col items-center justify-center bg-background">
+   255→        <div className="flex items-center gap-3 mb-4"><Flame className="w-8 h-8 text-orange-500 animate-pulse" /><span className="text-2xl font-bold tracking-tight">5X Finder</span></div>
+   256→        <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="w-4 h-4 animate-spin" /><span>Loading Fintech stock universe…</span></div>
+   257→      </div>
+   258→    );
+   259→  }
+   260→
+   261→  return (
+   262→    <div className="min-h-screen flex flex-col bg-background">
+   263→      {/* Header */}
+   264→      <header className="border-b bg-card/80 backdrop-blur-sm sticky top-0 z-40">
+   265→        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+   266→          <div className="flex items-center gap-3">
+   267→            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center"><Flame className="w-5 h-5 text-white" /></div>
+   268→            <div><h1 className="text-lg font-bold tracking-tight leading-tight">5X Finder</h1><p className="text-xs text-muted-foreground leading-tight">AI-Powered Fintech Stock Picking · 10-Factor Model</p></div>
+   269→          </div>
+   270→          <div className="flex items-center gap-2">
+   271→            <div className="relative hidden sm:block"><Search className="absolute left-2.5 top-2.5 w-4 h-4 text-muted-foreground" /><input type="text" placeholder="Search stocks…" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-8 pr-3 py-1.5 text-sm bg-muted/50 border rounded-md w-52 focus:outline-none focus:ring-1 focus:ring-ring" /></div>
+   272→            <Button variant="outline" size="sm" onClick={() => setWeightsOpen(true)}><Settings2 className="w-4 h-4 mr-1.5" />Weights</Button>
+   273→            <Button variant="outline" size="sm" onClick={fetchStocks}><RefreshCw className="w-3.5 h-3.5" /></Button>
+   274→          </div>
+   275→        </div>
+   276→      </header>
+   277→
+   278→      <main className="flex-1 max-w-[1440px] w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
+   279→        {/* Error state with retry */}
+   280→        {fetchError && !loading && (
+   281→          <Card className="border-destructive/50 bg-destructive/5">
+   282→            <CardContent className="p-6 text-center space-y-3">
+   283→              <div className="flex justify-center"><Zap className="w-8 h-8 text-destructive" /></div>
+   284→              <h3 className="font-semibold text-lg">Unable to load stock data</h3>
+   285→              <p className="text-muted-foreground text-sm">The server may be starting up. Auto-retrying every 8 seconds…</p>
+   286→              <Button onClick={fetchStocks} variant="outline" size="sm"><RefreshCw className="w-4 h-4 mr-2" />Retry Now</Button>
+   287→            </CardContent>
+   288→          </Card>
+   289→        )}
+   290→        {/* Loading state */}
+   291→        {loading && !fetchError && (
+   292→          <Card>
+   293→            <CardContent className="p-6 text-center space-y-3">
+   294→              <div className="flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
+   295→              <h3 className="font-semibold text-lg">Loading stock data…</h3>
+   296→              <p className="text-muted-foreground text-sm">Connecting to the 5X Finder engine</p>
+   297→            </CardContent>
+   298→          </Card>
+   299→        )}
+   300→        {!loading && !fetchError && stocks.length > 0 && (
+   301→        <>
+   302→        {/* Mobile search */}
+   303→        <div className="sm:hidden"><div className="relative"><Search className="absolute left-2.5 top-2.5 w-4 h-4 text-muted-foreground" /><input type="text" placeholder="Search stocks, sectors…" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-8 pr-3 py-2 text-sm bg-muted/50 border rounded-md w-full focus:outline-none focus:ring-1 focus:ring-ring" /></div></div>
+   304→
+   305→        {/* Top Picks */}
+   306→        <section>
+   307→          <div className="flex items-center gap-2 mb-3"><Star className="w-5 h-5 text-amber-500" /><h2 className="text-lg font-semibold">Top 5X Candidates</h2></div>
+   308→          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+   309→            {topPicks.map((stock, i) => (
+   310→              <motion.div key={stock.ticker} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
+   311→                <Card className={`cursor-pointer hover:shadow-md transition-shadow border ${getScoreBg(stock.fiveXScore)}`} onClick={() => handleStockClick(stock)}>
+   312→                  <CardContent className="p-4">
+   313→                    <div className="flex items-start justify-between mb-2">
+   314→                      <div><div className="flex items-center gap-2"><Badge variant="outline" className="font-mono text-xs">#{i + 1}</Badge><span className="font-mono font-bold text-sm">{stock.ticker}</span></div><p className="text-sm font-medium mt-1">{stock.name}</p></div>
+   315→                      <div className={`text-2xl font-bold ${getScoreColor(stock.fiveXScore)}`}>{stock.fiveXScore}</div>
+   316→                    </div>
+   317→                    <div className="flex items-center gap-3 text-xs text-muted-foreground mb-3"><span>{stock.sector}</span><span>·</span><span>{stock.marketCap}</span><span>·</span><span className="font-mono">{stock.price}</span></div>
+   318→                    <div className="space-y-1.5">
+   319→                      {QUANT_FACTORS.slice(0, 3).map(f => (<div key={f.key} className="flex items-center gap-2"><span className="text-xs text-muted-foreground w-28 shrink-0">{f.label}</span><Progress value={stock[f.key]} className="h-1.5 flex-1" /><span className="text-xs font-mono w-6 text-right">{stock[f.key]}</span></div>))}
+   320→                    </div>
+   321→                    <Separator className="my-2" />
+   322→                    <div className="space-y-1.5">
+   323→                      {QUAL_FACTORS.slice(0, 2).map(f => (<div key={f.key} className="flex items-center gap-2"><span className="text-xs text-muted-foreground w-28 shrink-0">{f.label}</span><Progress value={stock[f.key]} className="h-1.5 flex-1" /><span className="text-xs font-mono w-6 text-right">{stock[f.key]}</span></div>))}
+   324→                    </div>
+   325→                  </CardContent>
+   326→                </Card>
+   327→              </motion.div>
+   328→            ))}
+   329→          </div>
+   330→        </section>
+   331→
+   332→        {/* Charts Row */}
+   333→        <section><div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+   334→          <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-semibold flex items-center gap-2"><BarChart3 className="w-4 h-4 text-muted-foreground" />5X Score Rankings (Top 10)</CardTitle></CardHeader>
+   335→            <CardContent className="pt-0"><ResponsiveContainer width="100%" height={260}><BarChart data={top10Data} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}><CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" /><XAxis dataKey="name" tick={{ fontSize: 11, fontFamily: 'monospace' }} /><YAxis domain={[0, 100]} tick={{ fontSize: 11 }} /><Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e2e8f0' }} formatter={(v: number) => [`${v}`, '5X Score']} /><Bar dataKey="score" radius={[4, 4, 0, 0]}>{top10Data.map((e, i) => <Cell key={i} fill={e.fill} />)}</Bar></BarChart></ResponsiveContainer></CardContent></Card>
+   336→          <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-semibold flex items-center gap-2"><Eye className="w-4 h-4 text-muted-foreground" />Sector Distribution</CardTitle></CardHeader>
+   337→            <CardContent className="pt-0"><div className="flex items-center"><ResponsiveContainer width="60%" height={240}><PieChart><Pie data={sectorData} cx="50%" cy="50%" innerRadius={55} outerRadius={90} paddingAngle={2} dataKey="value">{sectorData.map((e, i) => <Cell key={i} fill={e.color} />)}</Pie><Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(v: number, n: string) => [`${v} stocks`, n]} /></PieChart></ResponsiveContainer>
+   338→              <div className="space-y-2 flex-1">{sectorData.map(s => (<div key={s.name} className="flex items-center gap-2 text-xs"><div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: s.color }} /><span className="text-muted-foreground truncate">{s.name}</span><span className="font-mono ml-auto">{s.value}</span></div>))}</div></div></CardContent></Card>
+   339→        </div></section>
+   340→
+   341→        {/* Average Factor Scores */}
+   342→        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+   343→          <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-semibold flex items-center gap-2"><BarChart3 className="w-4 h-4 text-blue-500" />Quantitative Factors — Universe Avg</CardTitle><CardDescription className="text-xs">Across {stocks.length} Fintech stocks</CardDescription></CardHeader>
+   344→            <CardContent className="pt-0"><div className="grid grid-cols-2 sm:grid-cols-3 gap-4">{quantAvg.map(f => { const cfg = QUANT_FACTORS.find(c => c.label === f.factor)!; const Icon = cfg.icon; return (<div key={f.factor} className="text-center space-y-1"><Icon className="w-5 h-5 mx-auto" style={{ color: f.color }} /><p className="text-[11px] text-muted-foreground">{f.factor}</p><p className={`text-lg font-bold ${getScoreColor(f.value)}`}>{f.value}</p><Progress value={f.value} className="h-1.5" /></div>); })}</div></CardContent></Card>
+   345→          <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-semibold flex items-center gap-2"><Lightbulb className="w-4 h-4 text-violet-500" />Qualitative Factors — Universe Avg</CardTitle><CardDescription className="text-xs">Across {stocks.length} Fintech stocks</CardDescription></CardHeader>
+   346→            <CardContent className="pt-0"><div className="grid grid-cols-2 sm:grid-cols-3 gap-4">{qualAvg.map(f => { const cfg = QUAL_FACTORS.find(c => c.label === f.factor)!; const Icon = cfg.icon; return (<div key={f.factor} className="text-center space-y-1"><Icon className="w-5 h-5 mx-auto" style={{ color: f.color }} /><p className="text-[11px] text-muted-foreground">{f.factor}</p><p className={`text-lg font-bold ${getScoreColor(f.value)}`}>{f.value}</p><Progress value={f.value} className="h-1.5" /></div>); })}</div></CardContent></Card>
+   347→        </div>
+   348→
+   349→        {/* Sector Filter */}
+   350→        <div className="flex items-center gap-2 flex-wrap">
+   351→          <span className="text-sm font-medium text-muted-foreground">Sector:</span>
+   352→          <button onClick={() => setSectorFilter('all')} className={`px-3 py-1 text-xs rounded-full border transition-colors ${sectorFilter === 'all' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted'}`}>All ({stocks.length})</button>
+   353→          {sectors.map(sector => (<button key={sector} onClick={() => setSectorFilter(sector)} className={`px-3 py-1 text-xs rounded-full border transition-colors ${sectorFilter === sector ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted'}`}>{sector} ({stocks.filter(s => s.sector === sector).length})</button>))}
+   354→        </div>
+   355→
+   356→        {/* Stock Rankings Table */}
+   357→        <Card>
+   358→          <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold flex items-center gap-2"><Zap className="w-4 h-4 text-orange-500" />Stock Rankings</CardTitle><CardDescription className="text-xs mt-1">{filteredStocks.length} stocks · Click any row for detailed analysis</CardDescription></CardHeader>
+   359→          <CardContent className="pt-0">
+   360→            <div className="overflow-x-auto">
+   361→              <table className="w-full text-sm">
+   362→                <thead><tr className="border-b">
+   363→                  <th className="text-left py-2 px-2 font-medium text-muted-foreground cursor-pointer hover:text-foreground" onClick={() => handleSort('ticker')}><div className="flex items-center gap-1">Ticker <SortIcon field="ticker" /></div></th>
+   364→                  <th className="text-left py-2 px-2 font-medium text-muted-foreground cursor-pointer hover:text-foreground hidden sm:table-cell" onClick={() => handleSort('name')}><div className="flex items-center gap-1">Name <SortIcon field="name" /></div></th>
+   365→                  <th className="text-left py-2 px-2 font-medium text-muted-foreground hidden md:table-cell">Sector</th>
+   366→                  <th className="text-right py-2 px-2 font-medium text-muted-foreground hidden lg:table-cell">Mkt Cap</th>
+   367→                  <th className="text-right py-2 px-2 font-medium text-muted-foreground hidden lg:table-cell">Price</th>
+   368→                  {QUANT_FACTORS.map(f => (<th key={f.key} className="text-right py-2 px-1 font-medium text-muted-foreground cursor-pointer hover:text-foreground hidden xl:table-cell" onClick={() => handleSort(f.key)}><div className="flex items-center justify-end gap-0.5"><f.icon className="w-3 h-3" style={{ color: f.color }} /><span className="text-[10px]">{f.label.split(' ')[0].slice(0, 5)}</span><SortIcon field={f.key} /></div></th>))}
+   369→                  {QUAL_FACTORS.map(f => (<th key={f.key} className="text-right py-2 px-1 font-medium text-muted-foreground cursor-pointer hover:text-foreground hidden 2xl:table-cell" onClick={() => handleSort(f.key)}><div className="flex items-center justify-end gap-0.5"><f.icon className="w-3 h-3" style={{ color: f.color }} /><span className="text-[10px]">{f.label.split(' ')[0].slice(0, 5)}</span><SortIcon field={f.key} /></div></th>))}
+   370→                  <th className="text-right py-2 px-2 font-medium text-muted-foreground cursor-pointer hover:text-foreground" onClick={() => handleSort('fiveXScore')}><div className="flex items-center justify-end gap-1"><Flame className="w-3.5 h-3.5 text-orange-500" />5X<SortIcon field="fiveXScore" /></div></th>
+   371→                  <th className="text-center py-2 px-2 font-medium text-muted-foreground">AI</th>
+   372→                </tr></thead>
+   373→                <tbody>{filteredStocks.map((stock, i) => (
+   374→                  <motion.tr key={stock.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.02 }} className="border-b hover:bg-muted/30 cursor-pointer transition-colors" onClick={() => handleStockClick(stock)}>
+   375→                    <td className="py-2.5 px-2"><span className="font-mono font-semibold text-xs">{stock.ticker}</span></td>
+   376→                    <td className="py-2.5 px-2 hidden sm:table-cell"><span className="text-xs">{stock.name}</span></td>
+   377→                    <td className="py-2.5 px-2 hidden md:table-cell"><Badge variant="outline" className="text-[10px] px-1.5 py-0">{stock.sector}</Badge></td>
+   378→                    <td className="py-2.5 px-2 text-right text-xs font-mono hidden lg:table-cell">{stock.marketCap}</td>
+   379→                    <td className="py-2.5 px-2 text-right text-xs font-mono hidden lg:table-cell">{stock.price}</td>
+   380→                    {QUANT_FACTORS.map(f => (<td key={f.key} className="py-2.5 px-1 text-right hidden xl:table-cell"><span className={`text-[11px] font-mono ${getScoreColor(stock[f.key])}`}>{stock[f.key]}</span></td>))}
+   381→                    {QUAL_FACTORS.map(f => (<td key={f.key} className="py-2.5 px-1 text-right hidden 2xl:table-cell"><span className={`text-[11px] font-mono ${getScoreColor(stock[f.key])}`}>{stock[f.key]}</span></td>))}
+   382→                    <td className="py-2.5 px-2 text-right"><span className={`font-bold text-sm ${getScoreColor(stock.fiveXScore)}`}>{stock.fiveXScore}</span></td>
+   383→                    <td className="py-2.5 px-2 text-center">{stock.aiAnalysis ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 inline" /> : <span className="text-xs text-muted-foreground">—</span>}</td>
+   384→                  </motion.tr>
+   385→                ))}</tbody>
+   386→              </table>
+   387→            </div>
+   388→          </CardContent>
+   389→        </Card>
+   390→
+   391→        {/* Methodology */}
+   392→        <Card className="border-dashed">
+   393→          <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold flex items-center gap-2"><Brain className="w-4 h-4 text-muted-foreground" />About the 5X Finder Model — 10-Factor Framework</CardTitle></CardHeader>
+   394→          <CardContent className="pt-0 text-xs text-muted-foreground space-y-3">
+   395→            <p><strong>5X Finder</strong> identifies Fintech stocks with the highest probability of achieving a <strong>5x return within 2 years</strong> using 5 quantitative + 5 qualitative factors, powered by AI analysis.</p>
+   396→            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+   397→              <div><p className="font-semibold text-foreground mb-2">📊 Quantitative Factors</p><div className="space-y-2">{QUANT_FACTORS.map(f => (<div key={f.key} className="flex items-start gap-2"><f.icon className="w-4 h-4 mt-0.5 shrink-0" style={{ color: f.color }} /><div><p className="font-medium text-foreground">{f.label}</p><p className="text-[11px]">{f.desc}</p></div></div>))}</div></div>
+   398→              <div><p className="font-semibold text-foreground mb-2">🧠 Qualitative Factors</p><div className="space-y-2">{QUAL_FACTORS.map(f => (<div key={f.key} className="flex items-start gap-2"><f.icon className="w-4 h-4 mt-0.5 shrink-0" style={{ color: f.color }} /><div><p className="font-medium text-foreground">{f.label}</p><p className="text-[11px]">{f.desc}</p></div></div>))}</div></div>
+   399→            </div>
+   400→            <p className="mt-2">The qualitative factors capture <strong>execution risk, innovation velocity, capital efficiency, customer loyalty, and business model quality</strong> that pure quantitative models miss. Stock prices sourced via live web search.</p>
+   401→          </CardContent>
+   402→        </Card>
+   403→        </>
+   404→        )}
+   405→      </main>
+   406→
+   407→      {/* Footer */}
+   408→      <footer className="mt-auto border-t bg-card/50">
+   409→        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground">
+   410→          <div className="flex items-center gap-2"><Flame className="w-4 h-4 text-orange-500" /><span className="font-medium">5X Finder</span><span>· 10-Factor AI-Powered Fintech Stock Picking</span></div>
+   411→          <span>For informational purposes only. Not financial advice.</span>
+   412→        </div>
+   413→      </footer>
+   414→
+   415→      {/* Stock Detail Dialog */}
+   416→      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+   417→        <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+   418→          {selectedStock && (<>
+   419→            <DialogHeader className="px-6 pt-6 pb-2 shrink-0">
+   420→              <DialogDescription className="sr-only">{selectedStock.name} detailed analysis and factor scores</DialogDescription>
+   421→              <div className="flex items-center justify-between flex-wrap gap-2">
+   422→                <div className="flex items-center gap-3">
+   423→                  <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${getScoreBg(selectedStock.fiveXScore)}`}><span className={`text-xl font-bold ${getScoreColor(selectedStock.fiveXScore)}`}>{selectedStock.fiveXScore}</span></div>
+   424→                  <div><DialogTitle className="flex items-center gap-2"><span className="font-mono">{selectedStock.ticker}</span><Badge variant={getScoreBadge(selectedStock.fiveXScore)}>{selectedStock.fiveXScore >= 75 ? 'High Potential' : selectedStock.fiveXScore >= 60 ? 'Moderate' : 'Speculative'}</Badge></DialogTitle><p className="text-sm text-muted-foreground">{selectedStock.name}</p></div>
+   425→                </div>
+   426→                <div className="flex items-center gap-2">
+   427→                  <Button variant="outline" size="sm" onClick={() => handleFetchNews(selectedStock.ticker)} disabled={newsLoading}>{newsLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Globe className="w-3.5 h-3.5 mr-1" />}News</Button>
+   428→                  <Button size="sm" onClick={() => handleAnalyze(selectedStock.ticker)} disabled={analyzeLoading}>{analyzeLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Sparkles className="w-3.5 h-3.5 mr-1" />}AI Analyze</Button>
+   429→                </div>
+   430→              </div>
+   431→            </DialogHeader>
+   432→            <div className="flex-1 overflow-y-auto px-6"><div className="space-y-4 pb-6">
+   433→              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+   434→                <div className="text-center p-2 rounded-lg bg-muted/50"><p className="text-[11px] text-muted-foreground">Sector</p><p className="text-sm font-medium">{selectedStock.sector}</p></div>
+   435→                <div className="text-center p-2 rounded-lg bg-muted/50"><p className="text-[11px] text-muted-foreground">Market Cap</p><p className="text-sm font-mono font-medium">{selectedStock.marketCap}</p></div>
+   436→                <div className="text-center p-2 rounded-lg bg-muted/50"><p className="text-[11px] text-muted-foreground">Price</p><p className="text-sm font-mono font-medium">{selectedStock.price}</p></div>
+   437→                <div className="text-center p-2 rounded-lg bg-muted/50"><p className="text-[11px] text-muted-foreground">Last Analyzed</p><p className="text-sm font-medium">{selectedStock.lastAnalyzed ? new Date(selectedStock.lastAnalyzed).toLocaleDateString() : 'Never'}</p></div>
+   438→              </div>
+   439→              <p className="text-sm text-muted-foreground">{selectedStock.description}</p>
+   440→              <Tabs defaultValue="factors" className="w-full">
+   441→                <TabsList className="w-full justify-start"><TabsTrigger value="factors" className="text-xs">Radar</TabsTrigger><TabsTrigger value="breakdown" className="text-xs">Breakdown</TabsTrigger><TabsTrigger value="analysis" className="text-xs">AI Analysis {selectedStock.aiAnalysis ? '✓' : ''}</TabsTrigger><TabsTrigger value="news" className="text-xs">News</TabsTrigger></TabsList>
+   442→                <TabsContent value="factors" className="mt-3"><ResponsiveContainer width="100%" height={350}><RadarChart data={getRadarData(selectedStock)}><PolarGrid stroke="#e2e8f0" /><PolarAngleAxis dataKey="factor" tick={{ fontSize: 10 }} /><PolarRadiusAxis domain={[0, 100]} tick={{ fontSize: 9 }} /><Radar name={selectedStock.ticker} dataKey="value" stroke="#f97316" fill="#f97316" fillOpacity={0.2} strokeWidth={2} /></RadarChart></ResponsiveContainer></TabsContent>
+   443→                <TabsContent value="breakdown" className="mt-3 space-y-4">
+   444→                  <div><p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1"><BarChart3 className="w-3.5 h-3.5 text-blue-500" />QUANTITATIVE FACTORS</p><div className="space-y-3">{QUANT_FACTORS.map(f => { const val = selectedStock[f.key]; const w = weights ? ((weights as Record<string, number>)[f.key] * 100).toFixed(0) : '—'; const Icon = f.icon; return (<div key={f.key} className="space-y-1"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><Icon className="w-4 h-4" style={{ color: f.color }} /><span className="text-sm font-medium">{f.label}</span><span className="text-[11px] text-muted-foreground">(W: {w}%)</span></div><span className={`font-mono font-bold ${getScoreColor(val)}`}>{val}/100</span></div><Progress value={val} className="h-2" /><p className="text-[11px] text-muted-foreground">{f.desc}</p></div>); })}</div></div>
+   445→                  <Separator />
+   446→                  <div><p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1"><Lightbulb className="w-3.5 h-3.5 text-violet-500" />QUALITATIVE FACTORS</p><div className="space-y-3">{QUAL_FACTORS.map(f => { const val = selectedStock[f.key]; const w = weights ? ((weights as Record<string, number>)[f.key] * 100).toFixed(0) : '—'; const Icon = f.icon; return (<div key={f.key} className="space-y-1"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><Icon className="w-4 h-4" style={{ color: f.color }} /><span className="text-sm font-medium">{f.label}</span><span className="text-[11px] text-muted-foreground">(W: {w}%)</span></div><span className={`font-mono font-bold ${getScoreColor(val)}`}>{val}/100</span></div><Progress value={val} className="h-2" /><p className="text-[11px] text-muted-foreground">{f.desc}</p></div>); })}</div></div>
+   447→                  <Separator /><div className="flex items-center justify-between pt-1"><span className="font-semibold">Composite 5X Score</span><span className={`text-xl font-bold ${getScoreColor(selectedStock.fiveXScore)}`}>{selectedStock.fiveXScore}</span></div>
+   448→                </TabsContent>
+   449→                <TabsContent value="analysis" className="mt-3">{selectedStock.aiAnalysis ? (<div className="prose prose-sm max-w-none"><ReactMarkdown>{selectedStock.aiAnalysis}</ReactMarkdown></div>) : (<div className="flex flex-col items-center justify-center py-12 text-center"><Brain className="w-10 h-10 text-muted-foreground mb-3" /><p className="text-sm text-muted-foreground mb-3">No AI analysis yet. Run the analysis to get a detailed 5X thesis.</p><Button onClick={() => handleAnalyze(selectedStock.ticker)} disabled={analyzeLoading}>{analyzeLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}Run AI Analysis</Button></div>)}</TabsContent>
+   450→                <TabsContent value="news" className="mt-3">{getNewsItems(selectedStock).length > 0 ? (<div className="space-y-3">{getNewsItems(selectedStock).map((item, i) => (<div key={i} className="p-3 rounded-lg bg-muted/30 space-y-1"><a href={item.url} target="_blank" rel="noopener noreferrer" className="text-sm font-medium hover:underline flex items-center gap-1">{item.title}<Zap className="w-3 h-3 shrink-0" /></a><p className="text-xs text-muted-foreground line-clamp-2">{item.snippet}</p><div className="flex items-center gap-2 text-[11px] text-muted-foreground"><span>{item.source}</span><span>·</span><span>{item.date ? new Date(item.date).toLocaleDateString() : 'N/A'}</span></div></div>))}</div>) : (<div className="flex flex-col items-center justify-center py-12 text-center"><Globe className="w-10 h-10 text-muted-foreground mb-3" /><p className="text-sm text-muted-foreground mb-3">No news yet for {selectedStock.ticker}.</p><Button variant="outline" onClick={() => handleFetchNews(selectedStock.ticker)} disabled={newsLoading}>{newsLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Globe className="w-4 h-4 mr-2" />}Fetch News</Button></div>)}</TabsContent>
+   451→              </Tabs>
+   452→            </div></div>
+   453→          </>)}
+   454→        </DialogContent>
+   455→      </Dialog>
+   456→
+   457→      {/* Weights Dialog */}
+   458→      <Dialog open={weightsOpen} onOpenChange={setWeightsOpen}>
+   459→        <DialogContent className="max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
+   460→          <DialogHeader><DialogTitle className="flex items-center gap-2"><Settings2 className="w-5 h-5" />Adjust Factor Weights</DialogTitle><DialogDescription className="sr-only">Customize factor weights</DialogDescription></DialogHeader>
+   461→          <div className="flex-1 overflow-y-auto -mx-6 px-6 space-y-4 pb-2">
+   462→            <p className="text-xs text-muted-foreground">Customize the weight of each factor. Must sum to 100%.</p>
+   463→            <div><p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1"><BarChart3 className="w-3.5 h-3.5 text-blue-500" />QUANTITATIVE</p><div className="space-y-3">{QUANT_FACTORS.map(f => (<div key={f.key} className="space-y-1.5"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><f.icon className="w-4 h-4" style={{ color: f.color }} /><span className="text-sm">{f.label}</span></div><span className="font-mono text-sm font-medium">{localWeights[f.key] ?? 0}%</span></div><Slider value={[localWeights[f.key] ?? 0]} min={0} max={30} step={1} onValueChange={([v]) => setLocalWeights(prev => ({ ...prev, [f.key]: v }))} /></div>))}</div></div>
+   464→            <Separator />
+   465→            <div><p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1"><Lightbulb className="w-3.5 h-3.5 text-violet-500" />QUALITATIVE</p><div className="space-y-3">{QUAL_FACTORS.map(f => (<div key={f.key} className="space-y-1.5"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><f.icon className="w-4 h-4" style={{ color: f.color }} /><span className="text-sm">{f.label}</span></div><span className="font-mono text-sm font-medium">{localWeights[f.key] ?? 0}%</span></div><Slider value={[localWeights[f.key] ?? 0]} min={0} max={30} step={1} onValueChange={([v]) => setLocalWeights(prev => ({ ...prev, [f.key]: v }))} /></div>))}</div></div>
+   466→            <Separator />
+   467→            <div className="flex items-center justify-between"><span className="text-sm font-medium">Total</span><span className={`font-mono text-sm font-bold ${Math.abs(Object.values(localWeights).reduce((a, b) => a + b, 0) - 100) < 2 ? 'text-emerald-600' : 'text-red-600'}`}>{Object.values(localWeights).reduce((a, b) => a + b, 0)}%</span></div>
+   468→            <div className="flex items-center gap-2"><Button variant="outline" className="flex-1" onClick={() => setLocalWeights({ ...DEFAULT_WEIGHTS_LOCAL })}>Reset Default</Button><Button className="flex-1" onClick={handleSaveWeights}>Save & Recalculate</Button></div>
+   469→          </div>
+   470→        </DialogContent>
+   471→      </Dialog>
+   472→    </div>
+   473→  );
+   474→}
+
+[showing lines 200-474 of 475; use offset=475 with limit to continue reading]

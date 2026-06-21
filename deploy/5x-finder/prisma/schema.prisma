@@ -34,6 +34,12 @@ model Stock {
 
   fiveXScore         Int
 
+  // Financial metrics
+  peRatio     Float?
+  pegRatio    Float?
+  evSales     Float?
+  evEbitda    Float?
+
   aiAnalysis    String?
   lastAnalyzed  DateTime?
 
