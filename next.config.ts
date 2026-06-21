@@ -12,6 +12,10 @@ const nextConfig: NextConfig = {
         source: "/(.*)",
         headers: [
           {
+            key: "Strict-Transport-Security",
+            value: "max-age=0",
+          },
+          {
             key: "Cache-Control",
             value: "no-store, no-cache, must-revalidate, proxy-revalidate",
           },
