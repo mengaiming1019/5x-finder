@@ -55,42 +55,42 @@ Please provide a structured analysis covering:
 
 Keep concise but insightful. Focus on actionable intelligence.`;
 
-    const openaiKey = process.env.OPENAI_API_KEY;
-    if (!openaiKey) {
+    const geminiKey = process.env.GEMINI_API_KEY;
+    if (!geminiKey) {
       return NextResponse.json(
-        { error: 'AI analysis unavailable: OPENAI_API_KEY not configured. Add it in Vercel → Settings → Environment Variables.' },
+        { error: 'AI analysis unavailable: GEMINI_API_KEY not configured. Get a free key at aistudio.google.com and add it in Vercel → Settings → Environment Variables.' },
         { status: 503 }
       );
     }
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${openaiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
-        temperature: 0.7,
-        max_tokens: 2048,
-      }),
-    });
+    // Use Google Gemini API (free tier: 15 requests/min, no credit card needed)
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ parts: [{ text: userPrompt }] }],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 2048,
+          },
+        }),
+      }
+    );
 
     if (!response.ok) {
       const errBody = await response.text();
-      console.error('OpenAI API error:', response.status, errBody);
+      console.error('Gemini API error:', response.status, errBody);
       return NextResponse.json(
-        { error: `OpenAI API error (${response.status}): ${errBody.slice(0, 200)}` },
+        { error: `Gemini API error (${response.status}): ${errBody.slice(0, 200)}` },
         { status: 502 }
       );
     }
 
     const data = await response.json();
-    const aiAnalysis = data.choices?.[0]?.message?.content || 'Analysis unavailable';
+    const aiAnalysis = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Analysis unavailable';
 
     await getDb().stock.update({
       where: { ticker: ticker.toUpperCase() },
