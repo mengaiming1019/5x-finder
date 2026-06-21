@@ -137,3 +137,28 @@ Stage Summary:
 - Top 5X candidates: NU(80), MELI(80), ADYEY(77), SE(76), SHOP(74), CRCL(74)
 - Circle (CRCL) and Sea Limited (SE) are strong new 5X candidates
 - App fully verified working via Agent Browser
+
+---
+Task ID: 5
+Agent: Main Agent
+Task: Fix app crash (sandbox instability issue)
+
+Work Log:
+- Diagnosed root cause: sandbox environment aggressively kills all background processes (dev server, keep-alive scripts) between commands
+- Improved fetchStocks retry mechanism: 3 retries → 5 retries with increasing delays (2s, 4s, 6s, 8s)
+- Added fetchError state for visible error handling
+- Added auto-retry every 8 seconds when data fails to load
+- Added loading state UI with spinner and "Connecting to the 5X Finder engine" message
+- Added error state UI with "Unable to load stock data" card, auto-retry message, and manual "Retry Now" button
+- Wrapped main content in conditional rendering: only shows when data is loaded successfully
+- Updated keep-alive.sh to use curl check instead of lsof for more reliable detection
+- Verified app works correctly when server is running: 26 stocks load, top picks display, detail dialog opens, breakdown tab shows quant/qual factors
+- Verified no console errors when page loads with server running
+- Verified mobile responsiveness (375x812 viewport) and desktop layout (1280x800)
+
+Stage Summary:
+- App code is fully functional and working correctly when server is up
+- Added robust error/loading states for when server is temporarily unavailable
+- Auto-retry mechanism (every 8s) ensures data loads as soon as server comes back
+- The sandbox killing background processes is an environment limitation, not a code bug
+- All 26 stocks with 10-factor model verified working via Agent Browser

@@ -125,6 +125,7 @@ export default function StockPickerPage() {
   const [stocks, setStocks] = useState<Stock[]>([]);
   const [weights, setWeights] = useState<FactorWeights | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
   const [selectedStock, setSelectedStock] = useState<Stock | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [analyzeLoading, setAnalyzeLoading] = useState(false);
@@ -137,11 +138,13 @@ export default function StockPickerPage() {
   const [localWeights, setLocalWeights] = useState<Record<string, number>>({ ...DEFAULT_WEIGHTS_LOCAL });
 
   const fetchStocks = useCallback(async () => {
-    // Try up to 3 times with increasing delay
-    for (let attempt = 0; attempt < 3; attempt++) {
+    setLoading(true);
+    setFetchError(false);
+    // Try up to 5 times with increasing delay
+    for (let attempt = 0; attempt < 5; attempt++) {
       try {
         if (attempt > 0) {
-          await new Promise(r => setTimeout(r, 1500 * attempt));
+          await new Promise(r => setTimeout(r, 2000 * attempt));
         }
         const res = await fetch('/api/stocks');
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -154,18 +157,26 @@ export default function StockPickerPage() {
           setLocalWeights(lw);
         }
         setLoading(false);
+        setFetchError(false);
         return; // success
       } catch (err) {
         console.error(`Fetch attempt ${attempt + 1} failed:`, err);
-        if (attempt === 2) {
+        if (attempt === 4) {
           setLoading(false);
-          toast.error('Failed to load stock data. Please refresh.');
+          setFetchError(true);
         }
       }
     }
   }, []);
 
   useEffect(() => { fetchStocks(); }, [fetchStocks]);
+
+  // Auto-retry every 8 seconds when fetch has failed
+  useEffect(() => {
+    if (!fetchError) return;
+    const interval = setInterval(() => { fetchStocks(); }, 8000);
+    return () => clearInterval(interval);
+  }, [fetchError, fetchStocks]);
 
   const handleStockClick = (stock: Stock) => { setSelectedStock(stock); setDetailOpen(true); };
 
@@ -266,6 +277,29 @@ export default function StockPickerPage() {
       </header>
 
       <main className="flex-1 max-w-[1440px] w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
+        {/* Error state with retry */}
+        {fetchError && !loading && (
+          <Card className="border-destructive/50 bg-destructive/5">
+            <CardContent className="p-6 text-center space-y-3">
+              <div className="flex justify-center"><Zap className="w-8 h-8 text-destructive" /></div>
+              <h3 className="font-semibold text-lg">Unable to load stock data</h3>
+              <p className="text-muted-foreground text-sm">The server may be starting up. Auto-retrying every 8 seconds…</p>
+              <Button onClick={fetchStocks} variant="outline" size="sm"><RefreshCw className="w-4 h-4 mr-2" />Retry Now</Button>
+            </CardContent>
+          </Card>
+        )}
+        {/* Loading state */}
+        {loading && !fetchError && (
+          <Card>
+            <CardContent className="p-6 text-center space-y-3">
+              <div className="flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
+              <h3 className="font-semibold text-lg">Loading stock data…</h3>
+              <p className="text-muted-foreground text-sm">Connecting to the 5X Finder engine</p>
+            </CardContent>
+          </Card>
+        )}
+        {!loading && !fetchError && stocks.length > 0 && (
+        <>
         {/* Mobile search */}
         <div className="sm:hidden"><div className="relative"><Search className="absolute left-2.5 top-2.5 w-4 h-4 text-muted-foreground" /><input type="text" placeholder="Search stocks, sectors…" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-8 pr-3 py-2 text-sm bg-muted/50 border rounded-md w-full focus:outline-none focus:ring-1 focus:ring-ring" /></div></div>
 
@@ -367,6 +401,8 @@ export default function StockPickerPage() {
             <p className="mt-2">The qualitative factors capture <strong>execution risk, innovation velocity, capital efficiency, customer loyalty, and business model quality</strong> that pure quantitative models miss. Stock prices sourced via live web search.</p>
           </CardContent>
         </Card>
+        </>
+        )}
       </main>
 
       {/* Footer */}
