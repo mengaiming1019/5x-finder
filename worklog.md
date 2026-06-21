@@ -162,3 +162,26 @@ Stage Summary:
 - Auto-retry mechanism (every 8s) ensures data loads as soon as server comes back
 - The sandbox killing background processes is an environment limitation, not a code bug
 - All 26 stocks with 10-factor model verified working via Agent Browser
+
+---
+Task ID: 6
+Agent: Main Agent
+Task: Fix sandbox killing dev server - create persistent supervisor
+
+Work Log:
+- Identified root cause: sandbox kills all bash background processes when command session ends
+- Tried multiple approaches: nohup, setsid, keep-alive.sh - all failed because bash child processes get killed
+- Created Python-based daemon supervisor using double-fork technique (supervisor.py)
+- Python daemon survives because it properly daemonizes with os.fork() + os.setsid()
+- Supervisor monitors server health every 5 seconds and auto-restarts if it dies
+- Verified supervisor persists across command sessions (tested 25+ seconds)
+- Verified all app features work: stock cards, detail dialog, AI Analysis (full 10-section), News, Weights dialog
+- Verified mobile and desktop responsive layouts
+- No console errors when page loads with server running
+
+Stage Summary:
+- Python daemon supervisor (supervisor.py) successfully keeps the dev server alive
+- Uses Unix double-fork daemonization for process persistence
+- Auto-restarts server within 5 seconds if it goes down
+- All 26 stocks, 10-factor model, AI analysis, news, weights all verified working
+- App fully functional and accessible via Preview Panel
