@@ -25,43 +25,34 @@ export async function POST(
 
     let newsItems: NewsItem[] | null = null;
 
-    // Try sandbox SDK first (z-ai-web-dev-sdk)
-    let ZAI: any;
+    // Try sandbox SDK first
     try {
-      ZAI = (await import('z-ai-web-dev-sdk')).default;
+      const ZAI = (await import('z-ai-web-dev-sdk')).default;
+      const zai = await ZAI.create();
+      const results = await zai.functions.invoke('web_search', {
+        query: `${stock.name} ${stock.ticker} fintech stock news latest 2025`,
+        num: 6,
+      });
+      newsItems = results.map(
+        (item: { name: string; snippet: string; url: string; date: string; host_name: string }) => ({
+          title: item.name,
+          snippet: item.snippet,
+          url: item.url,
+          date: item.date,
+          source: item.host_name,
+        })
+      );
     } catch {
-      ZAI = null;
+      // Sandbox SDK not available, use fallback
     }
 
-    if (ZAI) {
-      try {
-        const zai = await ZAI.create();
-        const results = await zai.functions.invoke('web_search', {
-          query: `${stock.name} ${stock.ticker} fintech stock news latest 2025`,
-          num: 6,
-        });
-
-        newsItems = results.map(
-          (item: { name: string; snippet: string; url: string; date: string; host_name: string }) => ({
-            title: item.name,
-            snippet: item.snippet,
-            url: item.url,
-            date: item.date,
-            source: item.host_name,
-          })
-        );
-      } catch (sdkError) {
-        console.warn('z-ai-web-dev-sdk web_search failed, falling back:', sdkError);
-      }
-    }
-
-    // Fallback for Vercel environment — return placeholder news
+    // Fallback for Vercel — link to Google News search
     if (!newsItems) {
       newsItems = [
         {
           title: `${stock.name} News — Configure API for Live Data`,
-          snippet: `Live news search requires an API key on Vercel. Set SERPAPI_KEY or a similar search API key in your Vercel environment variables to enable real-time news for ${stock.name} (${stock.ticker}).`,
-          url: `https://www.google.com/search?q=${encodeURIComponent(stock.name + ' ' + stock.ticker + ' fintech stock news')}`,
+          snippet: `Live news search requires a search API key on Vercel. To enable real-time news for ${stock.name} (${stock.ticker}), add a SERPAPI_KEY environment variable.`,
+          url: `https://www.google.com/search?q=${encodeURIComponent(stock.name + ' ' + stock.ticker + ' fintech stock news')}&tbm=nws`,
           date: new Date().toISOString().split('T')[0],
           source: 'System',
         },

@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
+const SYSTEM_PROMPT = `You are a world-class Fintech industry analyst with 20+ years of experience. You specialize in identifying high-growth Fintech stocks that can achieve 5x returns within 2 years. Your analysis combines deep industry knowledge, competitive analysis, financial modeling, and qualitative assessment of execution, culture, and business model strength. Provide specific, actionable insights.`;
+
 export async function POST(
   _request: Request,
   { params }: { params: Promise<{ ticker: string }> }
@@ -14,8 +16,6 @@ export async function POST(
     if (!stock) {
       return NextResponse.json({ error: 'Stock not found' }, { status: 404 });
     }
-
-    const systemPrompt = `You are a world-class Fintech industry analyst with 20+ years of experience. You specialize in identifying high-growth Fintech stocks that can achieve 5x returns within 2 years. Your analysis combines deep industry knowledge, competitive analysis, financial modeling, and qualitative assessment of execution, culture, and business model strength. Provide specific, actionable insights.`;
 
     const userPrompt = `Analyze ${stock.name} (${stock.ticker}) as a potential 5x investment opportunity within 2 years.
 
@@ -46,10 +46,10 @@ Please provide a structured analysis covering:
 2. **Key Catalysts**: What are the 2-3 most important catalysts that could drive 5x growth?
 3. **Risk Factors**: What are the key risks that could prevent 5x returns?
 4. **Execution Assessment**: Can this management team deliver? Evaluate their track record, strategic clarity, and operational discipline.
-5. **Innovation & Culture**: Does the company foster the innovation needed to sustain hypergrowth? Are they building for the future or resting on past success?
-6. **Funding & Capital Strategy**: Does the company have the financial resources and capital allocation skills to fund growth through to profitability?
-7. **Customer Moat & Stickiness**: How deep is the customer relationship? Is this a transactional or ecosystem play? What's the switching cost?
-8. **Business Model Quality**: How scalable and defensible is the monetization model? Are unit economics improving?
+5. **Innovation & Culture**: Does the company foster the innovation needed to sustain hypergrowth?
+6. **Funding & Capital Strategy**: Does the company have the financial resources to fund growth through to profitability?
+7. **Customer Moat & Stickiness**: How deep is the customer relationship? What's the switching cost?
+8. **Business Model Quality**: How scalable and defensible is the monetization model?
 9. **Industry Context**: How does this company fit into the broader Fintech landscape?
 10. **Verdict**: Your overall assessment with a confidence level (High/Medium/Low)
 
@@ -57,31 +57,23 @@ Keep the analysis concise but insightful. Focus on actionable intelligence.`;
 
     let aiAnalysis: string | null = null;
 
-    // Try sandbox SDK first (z-ai-web-dev-sdk)
-    let ZAI: any;
+    // Try sandbox SDK first
     try {
-      ZAI = (await import('z-ai-web-dev-sdk')).default;
+      const ZAI = (await import('z-ai-web-dev-sdk')).default;
+      const zai = await ZAI.create();
+      const completion = await zai.chat.completions.create({
+        messages: [
+          { role: 'assistant', content: SYSTEM_PROMPT },
+          { role: 'user', content: userPrompt },
+        ],
+        thinking: { type: 'disabled' },
+      });
+      aiAnalysis = completion.choices[0]?.message?.content || null;
     } catch {
-      ZAI = null;
+      // Sandbox SDK not available, fall back to OpenAI
     }
 
-    if (ZAI) {
-      try {
-        const zai = await ZAI.create();
-        const completion = await zai.chat.completions.create({
-          messages: [
-            { role: 'assistant', content: systemPrompt },
-            { role: 'user', content: userPrompt },
-          ],
-          thinking: { type: 'disabled' },
-        });
-        aiAnalysis = completion.choices[0]?.message?.content || null;
-      } catch (sdkError) {
-        console.warn('z-ai-web-dev-sdk failed, falling back to OpenAI:', sdkError);
-      }
-    }
-
-    // Fallback to OpenAI API (Vercel environment)
+    // Fallback to OpenAI API
     if (!aiAnalysis) {
       const openaiKey = process.env.OPENAI_API_KEY;
       if (!openaiKey) {
@@ -100,7 +92,7 @@ Keep the analysis concise but insightful. Focus on actionable intelligence.`;
         body: JSON.stringify({
           model: 'gpt-4o-mini',
           messages: [
-            { role: 'system', content: systemPrompt },
+            { role: 'system', content: SYSTEM_PROMPT },
             { role: 'user', content: userPrompt },
           ],
           temperature: 0.7,
