@@ -1,16 +1,22 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 
-const geistSans = Geist({
+const geistSans = localFont({
+  src: [
+    { path: "../../node_modules/next/dist/next-devtools/server/font/geist-latin.woff2", weight: "400", style: "normal" },
+    { path: "../../node_modules/next/dist/next-devtools/server/font/geist-latin-ext.woff2", weight: "700", style: "normal" },
+  ],
   variable: "--font-geist-sans",
-  subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
+const geistMono = localFont({
+  src: [
+    { path: "../../node_modules/next/dist/next-devtools/server/font/geist-mono-latin.woff2", weight: "400", style: "normal" },
+    { path: "../../node_modules/next/dist/next-devtools/server/font/geist-mono-latin-ext.woff2", weight: "700", style: "normal" },
+  ],
   variable: "--font-geist-mono",
-  subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
@@ -18,7 +24,7 @@ export const metadata: Metadata = {
   description: "Advanced multi-factor stock picking model that identifies the most promising Fintech stocks with 5x growth potential over 2 years, powered by AI analysis and industry expertise.",
   keywords: ["Fintech", "Stock Picking", "AI Analysis", "5X Returns", "Investment Model"],
   icons: {
-    icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
+    icon: "/logo.svg",
   },
 };
 

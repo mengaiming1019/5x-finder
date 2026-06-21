@@ -230,3 +230,34 @@ Stage Summary:
 - Replaced ScrollArea with overflow-y-auto for reliable native scrolling
 - Dialog header (stock name, score, buttons) stays fixed while tab content scrolls
 - All content accessible via scrolling on mobile and desktop
+
+---
+Task ID: 9
+Agent: Main Agent
+Task: Fix privacy errors when publishing the site
+
+Work Log:
+- Identified 3 sources of privacy errors:
+  1. External favicon loaded from https://z-cdn.chatglm.cn (third-party tracking concern)
+  2. Google Fonts loaded from fonts.googleapis.com (third-party tracking concern)
+  3. Missing security headers (Content-Security-Policy, X-Frame-Options, etc.)
+- Fixed favicon: Changed from external CDN URL to local /logo.svg (already in public/)
+- Fixed fonts: Switched from next/font/google to next/font/local using Geist woff2 files bundled with Next.js
+- Added 7 security headers in next.config.ts:
+  - X-Frame-Options: DENY (prevents clickjacking)
+  - X-Content-Type-Options: nosniff (prevents MIME sniffing)
+  - Referrer-Policy: strict-origin-when-cross-origin (limits referrer leakage)
+  - X-DNS-Prefetch-Control: on
+  - Strict-Transport-Security: max-age=63072000; includeSubDomains; preload (enforces HTTPS)
+  - Permissions-Policy: camera=(), microphone=(), geolocation=() (blocks sensitive APIs)
+  - Content-Security-Policy: default-src 'self'; ... (prevents XSS, injection attacks)
+- Verified: zero external resource requests (no googleapis, no chatglm, no gstatic)
+- Verified: all 7 security headers present in HTTP responses
+- Verified: page renders correctly with local fonts, no console errors
+- Lint passes
+
+Stage Summary:
+- Eliminated all external CDN requests (Google Fonts, chatglm favicon)
+- All resources served locally from the same origin
+- 7 security headers added for privacy and security compliance
+- No privacy errors expected when publishing
