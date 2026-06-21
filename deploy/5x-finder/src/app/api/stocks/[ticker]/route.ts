@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { getDb } from '@/lib/db';
 
 export async function GET(
   _request: Request,
@@ -7,7 +7,7 @@ export async function GET(
 ) {
   try {
     const { ticker } = await params;
-    const stock = await db.stock.findUnique({
+    const stock = await getDb().stock.findUnique({
       where: { ticker: ticker.toUpperCase() },
     });
 

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { getDb } from '@/lib/db';
 
 export async function POST(
   _request: Request,
@@ -7,7 +7,7 @@ export async function POST(
 ) {
   try {
     const { ticker } = await params;
-    const stock = await db.stock.findUnique({
+    const stock = await getDb().stock.findUnique({
       where: { ticker: ticker.toUpperCase() },
     });
 
@@ -92,7 +92,7 @@ Keep concise but insightful. Focus on actionable intelligence.`;
     const data = await response.json();
     const aiAnalysis = data.choices?.[0]?.message?.content || 'Analysis unavailable';
 
-    await db.stock.update({
+    await getDb().stock.update({
       where: { ticker: ticker.toUpperCase() },
       data: { aiAnalysis, lastAnalyzed: new Date() },
     });

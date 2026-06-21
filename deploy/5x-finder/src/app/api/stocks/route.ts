@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { getDb } from '@/lib/db';
 
 // Auto-seed: populate database if empty (no terminal commands needed on Vercel)
 async function ensureSeeded() {
-  const count = await db.stock.count();
+  const count = await getDb().stock.count();
   if (count > 0) return;
 
   console.log('🌱 Database is empty, auto-seeding...');
@@ -63,16 +63,16 @@ async function ensureSeeded() {
   }));
 
   for (const stock of stockWithScores) {
-    await db.stock.upsert({
+    await getDb().stock.upsert({
       where: { ticker: stock.ticker },
       update: stock,
       create: stock,
     });
   }
 
-  const existingWeights = await db.factorWeight.findFirst();
+  const existingWeights = await getDb().factorWeight.findFirst();
   if (!existingWeights) {
-    await db.factorWeight.create({ data: DEFAULT_WEIGHTS });
+    await getDb().factorWeight.create({ data: DEFAULT_WEIGHTS });
   }
 
   console.log(`✅ Auto-seeded ${stockWithScores.length} stocks`);
@@ -82,11 +82,11 @@ export async function GET() {
   try {
     await ensureSeeded();
 
-    const stocks = await db.stock.findMany({
+    const stocks = await getDb().stock.findMany({
       orderBy: { fiveXScore: 'desc' },
     });
 
-    const weights = await db.factorWeight.findFirst();
+    const weights = await getDb().factorWeight.findFirst();
 
     return NextResponse.json({ stocks, weights });
   } catch (error) {

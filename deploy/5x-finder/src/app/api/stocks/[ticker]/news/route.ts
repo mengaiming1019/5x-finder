@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { getDb } from '@/lib/db';
 
 interface NewsItem {
   title: string;
@@ -15,7 +15,7 @@ export async function POST(
 ) {
   try {
     const { ticker } = await params;
-    const stock = await db.stock.findUnique({
+    const stock = await getDb().stock.findUnique({
       where: { ticker: ticker.toUpperCase() },
     });
 
@@ -48,7 +48,7 @@ export async function POST(
       },
     ];
 
-    await db.stock.update({
+    await getDb().stock.update({
       where: { ticker: ticker.toUpperCase() },
       data: {
         latestNews: JSON.stringify(newsItems),

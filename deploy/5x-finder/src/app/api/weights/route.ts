@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { getDb } from '@/lib/db';
 
 export async function GET() {
   try {
-    const weights = await db.factorWeight.findFirst();
+    const weights = await getDb().factorWeight.findFirst();
     if (!weights) {
       return NextResponse.json({ error: 'No weights found' }, { status: 404 });
     }
@@ -30,7 +30,7 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: `Weights must sum to 1.0, got ${total.toFixed(2)}` }, { status: 400 });
     }
 
-    const existingWeights = await db.factorWeight.findFirst();
+    const existingWeights = await getDb().factorWeight.findFirst();
     let weights;
 
     const weightData = {
@@ -40,15 +40,15 @@ export async function PUT(request: Request) {
     };
 
     if (existingWeights) {
-      weights = await db.factorWeight.update({
+      weights = await getDb().factorWeight.update({
         where: { id: existingWeights.id },
         data: weightData,
       });
     } else {
-      weights = await db.factorWeight.create({ data: weightData });
+      weights = await getDb().factorWeight.create({ data: weightData });
     }
 
-    const stocks = await db.stock.findMany();
+    const stocks = await getDb().stock.findMany();
     for (const stock of stocks) {
       const fiveXScore = Math.round(
         stock.revenueGrowth * revenueGrowth +
@@ -63,7 +63,7 @@ export async function PUT(request: Request) {
         stock.monetizationModel * monetizationModel
       );
 
-      await db.stock.update({
+      await getDb().stock.update({
         where: { id: stock.id },
         data: { fiveXScore },
       });
