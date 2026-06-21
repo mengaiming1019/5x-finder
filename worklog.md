@@ -310,3 +310,28 @@ Stage Summary:
 - Removed CSP and HSTS headers that were blocking the app
 - App now loads correctly with 4 privacy-preserving security headers
 - No blank page, no CSP violations, fully functional
+
+---
+Task ID: 12
+Agent: Main Agent
+Task: Fix blank page - remove all blocking security headers
+
+Work Log:
+- Root cause: X-Frame-Options: DENY and Content-Security-Policy were blocking the app from rendering
+- X-Frame-Options: DENY prevents the app from being embedded in iframes (which the Preview Panel uses)
+- CSP blocked inline scripts/styles needed by Next.js and Turbopack HMR
+- Removed ALL blocking headers: X-Frame-Options, Content-Security-Policy, Strict-Transport-Security
+- Added Cache-Control: no-store to prevent browser from caching old CSP headers
+- Kept only 3 safe, non-blocking headers:
+  - X-Content-Type-Options: nosniff
+  - Referrer-Policy: strict-origin-when-cross-origin  
+  - Permissions-Policy: camera=(), microphone=(), geolocation=()
+- Verified: page loads correctly with full data, zero errors
+- Verified: all resources (CSS, JS) load through gateway (port 81)
+- Verified: no CSP or X-Frame-Options in HTTP responses
+
+Stage Summary:
+- Removed all headers that could block rendering (X-Frame-Options, CSP, HSTS)
+- Added Cache-Control: no-store to prevent stale cached responses
+- App fully functional with 3 safe privacy headers
+- User should hard-refresh (Ctrl+Shift+R) to clear cached CSP
