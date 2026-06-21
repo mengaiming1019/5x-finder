@@ -4,7 +4,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL", "postgresql://placeholder:placeholder@localhost/placeholder")
+  url      = env("DATABASE_URL")
 }
 
 model Stock {
@@ -19,51 +19,40 @@ model Stock {
   logoUrl     String?
   website     String?
 
-  // Quantitative Factor Scores (0-100)
   revenueGrowth      Int
   marketOpportunity  Int
   competitiveMoat    Int
   profitabilityPath  Int
   valuation          Int
 
-  // Qualitative Factor Scores (0-100)
   executionCapabilities Int
   innovationCulture     Int
   fundingStrength       Int
   customerStickiness    Int
   monetizationModel     Int
 
-  // Composite
   fiveXScore         Int
 
-  // AI Analysis
   aiAnalysis    String?
   lastAnalyzed  DateTime?
 
-  // News (JSON string)
   latestNews    String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  @@map("stocks")
 }
 
 model FactorWeight {
   id                String @id @default(cuid())
-  // Quantitative weights
   revenueGrowth     Float  @default(0.15)
   marketOpportunity Float  @default(0.15)
   competitiveMoat   Float  @default(0.15)
   profitabilityPath Float  @default(0.10)
   valuation         Float  @default(0.10)
-  // Qualitative weights
   executionCapabilities Float @default(0.10)
   innovationCulture     Float @default(0.08)
   fundingStrength       Float @default(0.07)
   customerStickiness    Float @default(0.05)
   monetizationModel     Float @default(0.05)
   updatedAt         DateTime @updatedAt
-
-  @@map("factor_weights")
 }
