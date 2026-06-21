@@ -23,41 +23,30 @@ export async function POST(
       return NextResponse.json({ error: 'Stock not found' }, { status: 404 });
     }
 
-    let newsItems: NewsItem[] | null = null;
-
-    // Try sandbox SDK first
-    try {
-      const ZAI = (await import('z-ai-web-dev-sdk')).default;
-      const zai = await ZAI.create();
-      const results = await zai.functions.invoke('web_search', {
-        query: `${stock.name} ${stock.ticker} fintech stock news latest 2025`,
-        num: 6,
-      });
-      newsItems = results.map(
-        (item: { name: string; snippet: string; url: string; date: string; host_name: string }) => ({
-          title: item.name,
-          snippet: item.snippet,
-          url: item.url,
-          date: item.date,
-          source: item.host_name,
-        })
-      );
-    } catch {
-      // Sandbox SDK not available, use fallback
-    }
-
-    // Fallback for Vercel — link to Google News search
-    if (!newsItems) {
-      newsItems = [
-        {
-          title: `${stock.name} News — Configure API for Live Data`,
-          snippet: `Live news search requires a search API key on Vercel. To enable real-time news for ${stock.name} (${stock.ticker}), add a SERPAPI_KEY environment variable.`,
-          url: `https://www.google.com/search?q=${encodeURIComponent(stock.name + ' ' + stock.ticker + ' fintech stock news')}&tbm=nws`,
-          date: new Date().toISOString().split('T')[0],
-          source: 'System',
-        },
-      ];
-    }
+    // No search SDK in production — use Google News / Yahoo Finance / Seeking Alpha links
+    const newsItems: NewsItem[] = [
+      {
+        title: `${stock.name} (${stock.ticker}) — Latest News on Google`,
+        snippet: `Click to view the latest news and analysis for ${stock.name} (${stock.ticker}). To enable in-app live news, add a SERPAPI_KEY environment variable in Vercel Settings.`,
+        url: `https://www.google.com/search?q=${encodeURIComponent(stock.name + ' ' + stock.ticker + ' fintech stock news')}&tbm=nws`,
+        date: new Date().toISOString().split('T')[0],
+        source: 'Google News',
+      },
+      {
+        title: `${stock.name} Stock — Yahoo Finance`,
+        snippet: `View ${stock.name} stock price, news, and financial data on Yahoo Finance.`,
+        url: `https://finance.yahoo.com/quote/${stock.ticker}`,
+        date: new Date().toISOString().split('T')[0],
+        source: 'Yahoo Finance',
+      },
+      {
+        title: `${stock.name} — Seeking Alpha Analysis`,
+        snippet: `Read analyst coverage and investment analysis for ${stock.name} on Seeking Alpha.`,
+        url: `https://seekingalpha.com/symbol/${stock.ticker}`,
+        date: new Date().toISOString().split('T')[0],
+        source: 'Seeking Alpha',
+      },
+    ];
 
     await db.stock.update({
       where: { ticker: ticker.toUpperCase() },
