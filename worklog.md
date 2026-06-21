@@ -75,3 +75,32 @@ Stage Summary:
 - All stock prices updated to real-time via web search (June 2026)
 - Top rankings: NU (80), MELI (80), ADYEY (77), SHOP (74), PLTR (73)
 - App verified working via Agent Browser with correct data
+
+---
+Task ID: 4
+Agent: Main Agent
+Task: Fix app, update Adyen price, add 7 new stocks (BLSH, KLAR, CRCL, PAYP, BTGO, BILL, SE)
+
+Work Log:
+- Fixed app not working: server was dying due to sandbox resource limits; added retry logic for data fetch
+- Corrected Adyen price from €1,620 to $10.35 (OTC ADR price in USD, market cap $31.7B)
+- Added 7 new stocks with real-time prices via web search:
+  - BLSH (Bullish): $24.05, $3.6B, Crypto Exchange
+  - KLAR (Klarna): $18.81, $7.1B, BNPL & Shopping Platform
+  - CRCL (Circle): $80.23, $19.9B, Stablecoin Infrastructure
+  - PAYP (PayPay): $12.37, $8.3B, Mobile Payments Japan
+  - BTGO (BitGo): $5.97, $690M, Digital Asset Custody
+  - BILL (BILL Holdings): $32.50, $3.2B, SMB Financial Automation
+  - SE (Sea Limited): $92.00, $55.9B, SE Asia E-Commerce+Fintech+Gaming
+- Added 'Fintech SaaS' sector color for BILL
+- Total stocks now 23 (up from 16)
+- Force-reset DB and re-seeded with all 23 stocks
+- Verified with Agent Browser: all 23 stocks load, no console errors, sector filters include Crypto(4), Lending(3), Commerce&Fintech(2), Fintech SaaS(1)
+- Lint passes with no errors
+
+Stage Summary:
+- 23 Fintech stocks in the universe (7 new additions)
+- Adyen price corrected to $10.35 ADR
+- Top 5X candidates: NU(80), MELI(80), ADYEY(77), SE(76), SHOP(74), CRCL(74)
+- Circle (CRCL) and Sea Limited (SE) are strong new 5X candidates
+- App fully verified working via Agent Browser

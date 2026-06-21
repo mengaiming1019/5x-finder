@@ -104,7 +104,7 @@ const SECTOR_COLORS: Record<string, string> = {
   'Payments': '#3b82f6', 'Lending': '#10b981', 'Digital Banking': '#8b5cf6',
   'Insurtech': '#f59e0b', 'Commerce': '#ef4444', 'Crypto': '#06b6d4',
   'Trading': '#ec4899', 'Enterprise AI': '#f97316', 'Automation': '#14b8a6',
-  'Commerce & Fintech': '#6366f1',
+  'Commerce & Fintech': '#6366f1', 'Fintech SaaS': '#a855f7',
 };
 
 const DEFAULT_WEIGHTS_LOCAL: Record<string, number> = {
