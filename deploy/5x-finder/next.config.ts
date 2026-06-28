@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import path from "path";
 
 const nextConfig: NextConfig = {
   typescript: {
@@ -6,6 +7,7 @@ const nextConfig: NextConfig = {
   },
   reactStrictMode: false,
   serverExternalPackages: ["@prisma/client", "prisma"],
+  outputFileTracingRoot: path.join(__dirname, "../../"),
 };
 
 export default nextConfig;
